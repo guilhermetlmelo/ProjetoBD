@@ -1,0 +1,5 @@
+-- ============================================
+-- Tabela: ATENDIMENTO
+-- Responsável: Lucca
+-- Depende de: CLIENTE, FUNCIONARIO, MESA
+-- ============================================

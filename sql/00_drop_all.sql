@@ -1,0 +1,5 @@
+-- ============================================
+-- Tabela: TODAS (remoção das tabelas)
+-- Responsável: Gui
+-- Depende de: (nenhuma)
+-- ============================================

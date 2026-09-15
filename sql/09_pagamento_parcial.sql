@@ -1,0 +1,5 @@
+-- ============================================
+-- Tabela: PAGAMENTO_PARCIAL
+-- Responsável: Pedro
+-- Depende de: ATENDIMENTO
+-- ============================================

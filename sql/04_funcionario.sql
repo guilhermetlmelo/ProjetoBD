@@ -1,0 +1,5 @@
+-- ============================================
+-- Tabela: FUNCIONARIO
+-- Responsável: Rafael
+-- Depende de: PESSOA (e autorrelacionamento com FUNCIONARIO)
+-- ============================================

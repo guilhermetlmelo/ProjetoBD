@@ -1,0 +1,5 @@
+-- ============================================
+-- Tabela: PEDIDO
+-- Responsável: Pedro
+-- Depende de: ATENDIMENTO, PRODUTO
+-- ============================================
