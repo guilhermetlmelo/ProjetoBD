@@ -1,5 +1,11 @@
--- ============================================
--- Tabela: TODAS (remoção das tabelas)
--- Responsável: Gui
--- Depende de: (nenhuma)
--- ============================================
+DROP TABLE IF EXISTS PAGAMENTO_PARCIAL;
+DROP TABLE IF EXISTS PEDIDO;
+DROP TABLE IF EXISTS ATENDIMENTO;
+DROP TABLE IF EXISTS TELEFONE;
+DROP TABLE IF EXISTS CLIENTE;
+DROP TABLE IF EXISTS FUNCIONARIO;
+DROP TABLE IF EXISTS PRODUTO;
+DROP TABLE IF EXISTS MESA;
+DROP TABLE IF EXISTS PESSOA;
+
+SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
