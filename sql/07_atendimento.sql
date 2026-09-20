@@ -1,5 +1,29 @@
--- ============================================
--- Tabela: ATENDIMENTO
--- Responsável: Lucca
--- Depende de: CLIENTE, FUNCIONARIO, MESA
--- ============================================
+
+
+CREATE TABLE ATENDIMENTO (
+    ID_Atendimento      INTEGER     NOT NULL,
+    Data_Hora_Abertura  TIMESTAMP   NOT NULL,
+    Status_Conta        VARCHAR(10) NOT NULL DEFAULT 'ABERTA',
+    CPF_Cliente         VARCHAR(11) NOT NULL,
+    CPF_Garcom          VARCHAR(11) NOT NULL,
+    Numero_Mesa         INTEGER     NOT NULL,
+    CONSTRAINT pk_atendimento PRIMARY KEY (ID_Atendimento),
+    CONSTRAINT fk_atendimento_cliente FOREIGN KEY (CPF_Cliente) REFERENCES CLIENTE (CPF),
+    CONSTRAINT fk_atendimento_funcionario FOREIGN KEY (CPF_Garcom) REFERENCES FUNCIONARIO (CPF),
+    CONSTRAINT fk_atendimento_mesa FOREIGN KEY (Numero_Mesa) REFERENCES MESA (Numero_Mesa),
+    CONSTRAINT ck_atendimento_status CHECK (Status_Conta IN ('ABERTA', 'FECHADA'))
+);
+
+INSERT INTO ATENDIMENTO (ID_Atendimento, Data_Hora_Abertura, Status_Conta, CPF_Cliente, CPF_Garcom, Numero_Mesa) VALUES
+(1,  '2026-09-04 19:30:00', 'FECHADA', '10000000001', '20000000003', 1),
+(2,  '2026-09-04 20:15:00', 'FECHADA', '10000000003', '20000000004', 5),
+(3,  '2026-09-05 18:45:00', 'FECHADA', '10000000002', '20000000002', 9),
+(4,  '2026-09-05 21:00:00', 'FECHADA', '10000000005', '20000000003', 7),
+(5,  '2026-09-11 19:00:00', 'FECHADA', '10000000004', '20000000004', 2),
+(6,  '2026-09-11 20:30:00', 'FECHADA', '10000000001', '20000000003', 6),
+(7,  '2026-09-12 19:40:00', 'FECHADA', '10000000003', '20000000004', 8),
+(8,  '2026-09-12 22:10:00', 'FECHADA', '10000000006', '20000000002', 10),
+(9,  '2026-09-18 20:00:00', 'FECHADA', '10000000005', '20000000003', 3),
+(10, '2026-09-18 21:30:00', 'FECHADA', '10000000002', '20000000004', 4),
+(11, '2026-09-19 19:15:00', 'ABERTA',  '10000000006', '20000000003', 5),
+(12, '2026-09-19 20:45:00', 'ABERTA',  '10000000004', '20000000002', 9);

@@ -145,24 +145,6 @@ Se a sua instalação usa outra porta ou outra senha, passe por parâmetro:
 > nele (inclusive a do VS Code). Não guarde nada manualmente nesse banco: tudo precisa
 > estar nos arquivos de `sql/`.
 
-## Fluxo de trabalho com Git
-
-**Regra principal: ninguém commita direto na `main`.** Toda mudança entra por Pull Request.
-
-### Branches
-
-Cada pessoa trabalha na sua própria branch:
-
-| Pessoa | Branch   |
-|--------|----------|
-| Gui    | `gui`    |
-| Rafael | `rafael` |
-| João   | `joao`   |
-| Lucca  | `lucca`  |
-| Pedro  | `pedro`  |
-
-Cada um edita **apenas os seus arquivos**. Precisa mudar o arquivo de outra pessoa? Fale com ela.
-
 ### Passo a passo
 
 **Primeira vez** (criar a sua branch):
