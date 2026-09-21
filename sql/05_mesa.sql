@@ -1,5 +1,3 @@
-
-
 CREATE TABLE MESA (
     Numero_Mesa  INTEGER     NOT NULL,
     Capacidade   INTEGER     NOT NULL,
@@ -9,13 +7,33 @@ CREATE TABLE MESA (
 );
 
 INSERT INTO MESA (Numero_Mesa, Capacidade, Localizacao) VALUES
-(1,  4, 'Salao interno'),
-(2,  4, 'Salao interno'),
-(3,  4, 'Salao interno'),
-(4,  4, 'Salao interno'),
-(5,  6, 'Area externa'),
-(6,  6, 'Area externa'),
-(7,  4, 'Mezanino'),
-(8,  4, 'Mezanino'),
-(9,  2, 'Balcao'),
-(10, 2, 'Balcao');
+(1, 4, 'Salao interno'),
+(2, 4, 'Salao interno'),
+(3, 4, 'Salao interno'),
+(4, 4, 'Salao interno'),
+(5, 4, 'Salao interno'),
+(6, 4, 'Salao interno'),
+(7, 4, 'Salao interno'),
+(8, 4, 'Salao interno'),
+(9, 4, 'Salao interno'),
+(10, 4, 'Salao interno'),
+(11, 4, 'Salao interno'),
+(12, 4, 'Salao interno'),
+(13, 6, 'Area externa'),
+(14, 6, 'Area externa'),
+(15, 6, 'Area externa'),
+(16, 6, 'Area externa'),
+(17, 6, 'Area externa'),
+(18, 6, 'Area externa'),
+(19, 4, 'Mezanino'),
+(20, 4, 'Mezanino'),
+(21, 4, 'Mezanino'),
+(22, 4, 'Mezanino'),
+(23, 4, 'Mezanino'),
+(24, 4, 'Mezanino'),
+(25, 2, 'Balcao'),
+(26, 2, 'Balcao'),
+(27, 2, 'Balcao'),
+(28, 2, 'Balcao'),
+(29, 2, 'Balcao'),
+(30, 2, 'Balcao');
