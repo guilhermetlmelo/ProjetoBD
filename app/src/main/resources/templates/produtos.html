@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Produtos')}"></head>
+<body>
+<header th:replace="~{fragments :: topo}"></header>
+<main>
+    <h1>Produtos</h1>
+    <p class="sub">Cardápio do bar: inserção, alteração e exclusão na tabela PRODUTO.</p>
+
+    <th:block th:replace="~{fragments :: mensagens}"></th:block>
+
+    <section class="card">
+        <h2 th:text="${edicao} ? 'Alterar produto ' + ${form.codigoProd} : 'Novo produto'">Novo produto</h2>
+        <form th:action="@{/produtos/salvar}" method="post">
+            <input type="hidden" name="edicao" th:value="${edicao}">
+            <div class="form-grade">
+                <div>
+                    <label for="codigoProd">Código</label>
+                    <input id="codigoProd" name="codigoProd" type="number" min="1" required
+                           th:value="${form.codigoProd}" th:readonly="${edicao}">
+                </div>
+                <div>
+                    <label for="nomeProduto">Nome</label>
+                    <input id="nomeProduto" name="nomeProduto" maxlength="80" required
+                           th:value="${form.nomeProduto}">
+                </div>
+                <div>
+                    <label for="precoAtual">Preço atual (R$)</label>
+                    <input id="precoAtual" name="precoAtual" type="number" min="0.01" step="0.01" required
+                           th:value="${form.precoAtual}">
+                </div>
+                <div>
+                    <label for="categoria">Categoria</label>
+                    <input id="categoria" name="categoria" maxlength="30" required list="lista-categorias"
+                           th:value="${form.categoria}">
+                    <datalist id="lista-categorias">
+                        <option th:each="c : ${categorias}" th:value="${c}"></option>
+                    </datalist>
+                </div>
+            </div>
+            <div class="botoes">
+                <button class="btn primario" type="submit" th:text="${edicao} ? 'Salvar alterações' : 'Inserir'">Inserir</button>
+                <a class="btn" th:if="${edicao}" th:href="@{/produtos}">Cancelar</a>
+            </div>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2>Produtos cadastrados</h2>
+        <div class="tabela-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th class="num">Código</th>
+                    <th>Nome</th>
+                    <th class="num">Preço (R$)</th>
+                    <th>Categoria</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="p : ${produtos}">
+                    <td class="num" th:text="${p.codigoProd}"></td>
+                    <td th:text="${p.nomeProduto}"></td>
+                    <td class="num" th:text="${#numbers.formatDecimal(p.precoAtual, 1, 'POINT', 2, 'COMMA')}"></td>
+                    <td th:text="${p.categoria}"></td>
+                    <td class="acoes">
+                        <a class="btn pequeno" th:href="@{/produtos(editar=${p.codigoProd})}">Editar</a>
+                        <form th:action="@{/produtos/{c}/excluir(c=${p.codigoProd})}" method="post"
+                              onsubmit="return confirm('Excluir este produto?');">
+                            <button class="btn pequeno perigo" type="submit">Excluir</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="contagem" th:text="${produtos.size()} + ' produto(s)'"></p>
+    </section>
+</main>
+</body>
+</html>

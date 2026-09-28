@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Tabelas')}"></head>
+<body>
+<header th:replace="~{fragments :: topo}"></header>
+<main>
+    <h1>Tabelas</h1>
+    <p class="sub">Conteúdo atual de cada tabela do banco.</p>
+
+    <nav class="abas">
+        <a th:each="n : ${nomes}" th:href="@{/tabelas/{n}(n=${n})}" th:text="${n}"
+           th:classappend="${n == tabela} ? 'ativo'"></a>
+    </nav>
+
+    <section class="card">
+        <h2 th:text="${tabela}"></h2>
+        <th:block th:replace="~{fragments :: resultado(${resultado})}"></th:block>
+    </section>
+</main>
+</body>
+</html>

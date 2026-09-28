@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Sem conexão')}"></head>
+<body>
+<header th:replace="~{fragments :: topo}"></header>
+<main>
+    <h1>Sem conexão com o banco</h1>
+    <div class="alerta aviso">Não foi possível conectar ao PostgreSQL.</div>
+    <section class="card">
+        <h2>O que conferir</h2>
+        <ol>
+            <li>O serviço do PostgreSQL 16 está rodando (porta 5432).</li>
+            <li>O banco <code>bar</code> foi criado: na raiz do repositório, rode <code>.\scripts\rodar_tudo.ps1</code>.</li>
+            <li>Usuário e senha em <code>app/src/main/resources/application.properties</code>
+                (ou nas variáveis <code>DB_URL</code>, <code>DB_USER</code>, <code>DB_PASSWORD</code>).</li>
+        </ol>
+        <p class="nota">Detalhe: <span th:text="${detalhe}"></span></p>
+    </section>
+</main>
+</body>
+</html>

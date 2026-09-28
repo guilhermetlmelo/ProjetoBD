@@ -1,0 +1,7 @@
+Projeto BD - Bar | Etapa 03: Interface funcional com dashboard
+
+Repositório: https://github.com/guilhermetlmelo/ProjetoBD
+
+- Aplicação (Java + Spring Boot + JDBC, PostgreSQL): pasta app/
+- SQL das consultas: sql/consultas/consultas.sql
+- Como rodar: seção "Aplicação (Etapa 03)" do README.md

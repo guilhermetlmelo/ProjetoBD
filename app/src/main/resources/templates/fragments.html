@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+
+<head th:fragment="head(titulo)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${titulo} + ' · Bar'">Bar</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+
+<body>
+
+<header th:fragment="topo" class="topo">
+    <div class="topo-inner">
+        <a class="marca" th:href="@{/}">Bar · Projeto BD</a>
+        <nav class="nav">
+            <a th:href="@{/}" th:classappend="${ativo == 'dashboard'} ? 'ativo'">Dashboard</a>
+            <a th:href="@{/consultas}" th:classappend="${ativo == 'consultas'} ? 'ativo'">Consultas</a>
+            <a th:href="@{/produtos}" th:classappend="${ativo == 'produtos'} ? 'ativo'">Produtos</a>
+            <a th:href="@{/mesas}" th:classappend="${ativo == 'mesas'} ? 'ativo'">Mesas</a>
+            <a th:href="@{/clientes}" th:classappend="${ativo == 'clientes'} ? 'ativo'">Clientes</a>
+            <a th:href="@{/tabelas}" th:classappend="${ativo == 'tabelas'} ? 'ativo'">Tabelas</a>
+        </nav>
+    </div>
+</header>
+
+<th:block th:fragment="mensagens">
+    <div class="alerta sucesso" th:if="${sucesso}" th:text="${sucesso}" role="status"></div>
+    <div class="alerta erro" th:if="${erro}" th:text="${erro}" role="alert"></div>
+</th:block>
+
+<!-- Tabela genérica para ResultadoTabela (visualização de tabelas e resultado das consultas) -->
+<th:block th:fragment="resultado(res)">
+    <div class="tabela-wrap">
+        <table>
+            <thead>
+            <tr>
+                <th th:each="col, i : ${res.colunas}" th:text="${col}"
+                    th:classappend="${res.numericas[i.index]} ? 'num'"></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="linha : ${res.linhas}">
+                <td th:each="v, i : ${linha}"
+                    th:classappend="${res.numericas[i.index]} ? 'num'"
+                    th:text="${v == null} ? '—' : ${v}"></td>
+            </tr>
+            <tr th:if="${res.linhas.isEmpty()}">
+                <td th:colspan="${res.colunas.size()}">Nenhuma linha.</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="contagem" th:text="${res.linhas.size()} + ' linha(s)'"></p>
+</th:block>
+
+</body>
+</html>

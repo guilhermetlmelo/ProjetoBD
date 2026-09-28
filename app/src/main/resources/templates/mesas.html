@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Mesas')}"></head>
+<body>
+<header th:replace="~{fragments :: topo}"></header>
+<main>
+    <h1>Mesas</h1>
+    <p class="sub">Mesas do bar: inserção, alteração e exclusão na tabela MESA.</p>
+
+    <th:block th:replace="~{fragments :: mensagens}"></th:block>
+
+    <section class="card">
+        <h2 th:text="${edicao} ? 'Alterar mesa ' + ${form.numeroMesa} : 'Nova mesa'">Nova mesa</h2>
+        <form th:action="@{/mesas/salvar}" method="post">
+            <input type="hidden" name="edicao" th:value="${edicao}">
+            <div class="form-grade">
+                <div>
+                    <label for="numeroMesa">Número</label>
+                    <input id="numeroMesa" name="numeroMesa" type="number" min="1" required
+                           th:value="${form.numeroMesa}" th:readonly="${edicao}">
+                </div>
+                <div>
+                    <label for="capacidade">Capacidade (lugares)</label>
+                    <input id="capacidade" name="capacidade" type="number" min="1" required
+                           th:value="${form.capacidade}">
+                </div>
+                <div>
+                    <label for="localizacao">Localização</label>
+                    <input id="localizacao" name="localizacao" maxlength="40" required list="lista-locais"
+                           th:value="${form.localizacao}">
+                    <datalist id="lista-locais">
+                        <option th:each="l : ${localizacoes}" th:value="${l}"></option>
+                    </datalist>
+                </div>
+            </div>
+            <div class="botoes">
+                <button class="btn primario" type="submit" th:text="${edicao} ? 'Salvar alterações' : 'Inserir'">Inserir</button>
+                <a class="btn" th:if="${edicao}" th:href="@{/mesas}">Cancelar</a>
+            </div>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2>Mesas cadastradas</h2>
+        <div class="tabela-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th class="num">Número</th>
+                    <th class="num">Capacidade</th>
+                    <th>Localização</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="m : ${mesas}">
+                    <td class="num" th:text="${m.numeroMesa}"></td>
+                    <td class="num" th:text="${m.capacidade}"></td>
+                    <td th:text="${m.localizacao}"></td>
+                    <td class="acoes">
+                        <a class="btn pequeno" th:href="@{/mesas(editar=${m.numeroMesa})}">Editar</a>
+                        <form th:action="@{/mesas/{n}/excluir(n=${m.numeroMesa})}" method="post"
+                              onsubmit="return confirm('Excluir esta mesa?');">
+                            <button class="btn pequeno perigo" type="submit">Excluir</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="contagem" th:text="${mesas.size()} + ' mesa(s)'"></p>
+    </section>
+</main>
+</body>
+</html>

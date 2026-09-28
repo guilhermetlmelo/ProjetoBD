@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Dashboard')}"></head>
+<body>
+<header th:replace="~{fragments :: topo}"></header>
+<main>
+    <h1>Dashboard</h1>
+    <p class="sub">Indicadores e gráficos estatísticos gerados a partir do banco, a cada carregamento da página.
+        O valor de um item é quantidade × preço atual do produto.</p>
+
+    <section class="kpis">
+        <div class="kpi">
+            <div class="rotulo">Faturamento total</div>
+            <div class="valor" th:text="'R$ ' + ${#numbers.formatDecimal(ind.faturamento, 1, 'POINT', 2, 'COMMA')}"></div>
+        </div>
+        <div class="kpi">
+            <div class="rotulo">Atendimentos</div>
+            <div class="valor" th:text="${ind.atendimentos}"></div>
+            <div class="extra" th:text="${ind.abertos} + ' com conta aberta'"></div>
+        </div>
+        <div class="kpi">
+            <div class="rotulo">Ticket médio</div>
+            <div class="valor" th:text="${ind.ticket_medio == null} ? '—' : 'R$ ' + ${#numbers.formatDecimal(ind.ticket_medio, 1, 'POINT', 2, 'COMMA')}"></div>
+            <div class="extra">consumo médio por atendimento</div>
+        </div>
+        <div class="kpi">
+            <div class="rotulo">Itens vendidos</div>
+            <div class="valor" th:text="${ind.itens}"></div>
+        </div>
+        <div class="kpi">
+            <div class="rotulo">Clientes</div>
+            <div class="valor" th:text="${ind.clientes}"></div>
+            <div class="extra" th:text="${ind.fieis} + ' com fidelidade ativa'"></div>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-titulo">
+            <h2>Valor consumido por atendimento</h2>
+        </div>
+        <p class="nota" th:text="'Contas fechadas (n = ' + ${estat.n} + '). Histograma com faixas de R$ ' + ${larguraFaixa} + '.'"></p>
+
+        <dl class="estat">
+            <div><dt>Média</dt><dd th:text="'R$ ' + ${#numbers.formatDecimal(estat.media, 1, 'POINT', 2, 'COMMA')}"></dd></div>
+            <div><dt>Mediana</dt><dd th:text="'R$ ' + ${#numbers.formatDecimal(estat.mediana, 1, 'POINT', 2, 'COMMA')}"></dd></div>
+            <div><dt>Desvio padrão</dt><dd th:text="'R$ ' + ${#numbers.formatDecimal(estat.desvio_padrao, 1, 'POINT', 2, 'COMMA')}"></dd></div>
+            <div><dt>Coef. de variação</dt><dd th:text="${#numbers.formatDecimal(estat.coef_variacao, 1, 'POINT', 1, 'COMMA')} + '%'"></dd></div>
+            <div><dt>Mínimo</dt><dd th:text="'R$ ' + ${#numbers.formatDecimal(estat.minimo, 1, 'POINT', 2, 'COMMA')}"></dd></div>
+            <div><dt>1º quartil</dt><dd th:text="'R$ ' + ${#numbers.formatDecimal(estat.q1, 1, 'POINT', 2, 'COMMA')}"></dd></div>
+            <div><dt>3º quartil</dt><dd th:text="'R$ ' + ${#numbers.formatDecimal(estat.q3, 1, 'POINT', 2, 'COMMA')}"></dd></div>
+            <div><dt>Máximo</dt><dd th:text="'R$ ' + ${#numbers.formatDecimal(estat.maximo, 1, 'POINT', 2, 'COMMA')}"></dd></div>
+        </dl>
+
+        <div class="grade">
+            <div>
+                <div class="grafico"><canvas id="g-histograma" role="img"
+                        aria-label="Histograma do valor consumido por atendimento"></canvas></div>
+            </div>
+            <div>
+                <div class="tabela-wrap">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Faixa</th>
+                            <th class="num">Freq. absoluta</th>
+                            <th class="num">Freq. relativa (%)</th>
+                            <th class="num">Freq. acumulada</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="f : ${distribuicao}">
+                            <td th:text="${f.rotulo}"></td>
+                            <td class="num" th:text="${f.valor}"></td>
+                            <td class="num" th:text="${f.relativa}"></td>
+                            <td class="num" th:text="${f.acumulada}"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>Correlação de Pearson: tempo de permanência × valor gasto</h2>
+        <p class="nota">Cada ponto é um atendimento fechado. Tempo = da abertura da conta até o último
+            pagamento parcial. A reta é a regressão linear por mínimos quadrados.</p>
+
+        <div class="grade">
+            <div>
+                <div class="grafico alto"><canvas id="g-pearson" role="img"
+                        aria-label="Dispersão entre tempo de permanência e valor gasto, com reta de regressão"></canvas></div>
+            </div>
+            <div>
+                <dl class="estat estat-2">
+                    <div><dt>Coeficiente r</dt>
+                        <dd th:text="${#numbers.formatDecimal(pearson.r, 1, 'POINT', 3, 'COMMA')}"></dd></div>
+                    <div><dt>Intensidade</dt><dd th:text="${pearson.intensidade}"></dd></div>
+                    <div><dt>r² (determinação)</dt>
+                        <dd th:text="${#numbers.formatDecimal(pearson.r2 * 100, 1, 'POINT', 1, 'COMMA')} + '%'"></dd></div>
+                    <div><dt>n (atendimentos)</dt><dd th:text="${pearson.n}"></dd></div>
+                    <div><dt>Estatística t</dt>
+                        <dd th:text="${#numbers.formatDecimal(pearson.t, 1, 'POINT', 2, 'COMMA')} + ' (gl = ' + ${pearson.gl} + ')'"></dd></div>
+                    <div><dt>p-valor (bilateral)</dt>
+                        <dd th:text="${pValor < 0.001} ? '< 0,001' : ${#numbers.formatDecimal(pValor, 1, 'POINT', 3, 'COMMA')}"></dd></div>
+                    <div class="largo"><dt>Reta de regressão</dt>
+                        <dd th:text="'valor = ' + ${#numbers.formatDecimal(pearson.intercepto, 1, 'POINT', 2, 'COMMA')}
+                                     + ' + ' + ${#numbers.formatDecimal(pearson.inclinacao, 1, 'POINT', 4, 'COMMA')} + ' × minutos'"></dd></div>
+                </dl>
+                <div class="alerta" th:classappend="${significativo} ? 'sucesso' : 'aviso'">
+                    <strong th:text="${significativo} ? 'Significativa ao nível de 5%.' : 'Não significativa ao nível de 5%.'"></strong>
+                    <span th:if="${significativo}"
+                          th:text="'Há correlação ' + ${pearson.intensidade} + ': quanto mais tempo o cliente fica, mais tende a gastar. Cada minuto a mais está associado, em média, a R$ '
+                                   + ${#numbers.formatDecimal(pearson.inclinacao, 1, 'POINT', 2, 'COMMA')} + ' a mais na conta. O tempo explica '
+                                   + ${#numbers.formatDecimal(pearson.r2 * 100, 1, 'POINT', 1, 'COMMA')} + '% da variação do valor.'"></span>
+                    <span th:unless="${significativo}">Não há evidência de relação linear entre o tempo de permanência e o valor gasto.</span>
+                </div>
+                <p class="nota">H0: ρ = 0 (não há correlação). t = r·√(n−2) / √(1−r²). Correlação não implica causalidade.</p>
+            </div>
+        </div>
+    </section>
+
+    <div class="grade">
+        <section class="card">
+            <h2>Faturamento por dia</h2>
+            <p class="nota">Consumo dos atendimentos iniciados em cada dia (R$).</p>
+            <div class="grafico"><canvas id="g-dia" role="img" aria-label="Faturamento por dia"></canvas></div>
+        </section>
+        <section class="card">
+            <h2>Itens pedidos por hora do dia</h2>
+            <p class="nota">Quantidade de itens por hora do pedido: mostra o horário de pico.</p>
+            <div class="grafico"><canvas id="g-hora" role="img" aria-label="Itens pedidos por hora"></canvas></div>
+        </section>
+    </div>
+
+    <div class="grade">
+        <section class="card">
+            <h2>Faturamento por categoria</h2>
+            <p class="nota">Receita de cada categoria do cardápio (R$).</p>
+            <div class="grafico"><canvas id="g-categoria" role="img" aria-label="Faturamento por categoria"></canvas></div>
+        </section>
+        <section class="card">
+            <h2>10 produtos mais vendidos</h2>
+            <p class="nota">Por quantidade de itens.</p>
+            <div class="grafico alto"><canvas id="g-produtos" role="img" aria-label="Produtos mais vendidos"></canvas></div>
+        </section>
+    </div>
+
+    <div class="grade">
+        <section class="card">
+            <h2>Valor recebido por forma de pagamento</h2>
+            <p class="nota">Soma dos pagamentos parciais (R$). Passe o mouse para ver a quantidade de transações.</p>
+            <div class="grafico"><canvas id="g-metodo" role="img" aria-label="Valor por forma de pagamento"></canvas></div>
+        </section>
+        <section class="card">
+            <h2>Atendimentos por área do bar</h2>
+            <p class="nota">Quantidade de atendimentos pela localização da mesa.</p>
+            <div class="grafico"><canvas id="g-local" role="img" aria-label="Atendimentos por localização"></canvas></div>
+        </section>
+    </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script th:inline="javascript">
+    window.DADOS = {
+        histograma: /*[[${distribuicao}]]*/ [],
+        porDia: /*[[${porDia}]]*/ [],
+        porHora: /*[[${porHora}]]*/ [],
+        porCategoria: /*[[${porCategoria}]]*/ [],
+        topProdutos: /*[[${topProdutos}]]*/ [],
+        porMetodo: /*[[${porMetodo}]]*/ [],
+        porLocalizacao: /*[[${porLocalizacao}]]*/ [],
+        pearsonPontos: /*[[${pearsonPontos}]]*/ [],
+        pearson: /*[[${pearson}]]*/ {}
+    };
+</script>
+<script th:src="@{/js/dashboard.js}"></script>
+</body>
+</html>

@@ -22,10 +22,14 @@ ProjetoBD/
 │   ├── 07_atendimento.sql
 │   ├── 08_pedido.sql
 │   └── 09_pagamento_parcial.sql
+│   └── consultas/
+│       └── consultas.sql        # Etapa 03: SQL de todas as consultas da aplicação
 ├── dados/
 │   └── referencia.md            # dados de referência usados nos INSERTs
-└── scripts/
-    └── rodar_tudo.ps1           # recria o banco e executa todos os scripts
+├── scripts/
+│   └── rodar_tudo.ps1           # recria o banco e executa todos os scripts
+├── app/                         # Etapa 03: aplicação Java (Spring Boot + JDBC)
+└── ENTREGA_LINK.txt             # link do repositório para a entrega
 ```
 
 O **prefixo numérico** dos arquivos define a ordem de execução, que é a ordem de
@@ -144,6 +148,61 @@ Se a sua instalação usa outra porta ou outra senha, passe por parâmetro:
 > ⚠️ O script **apaga o banco `bar`** toda vez que roda, derrubando conexões abertas
 > nele (inclusive a do VS Code). Não guarde nada manualmente nesse banco: tudo precisa
 > estar nos arquivos de `sql/`.
+
+## Aplicação (Etapa 03)
+
+Interface web com dashboard, em **Java 17 + Spring Boot 3**, acessando o PostgreSQL por
+**JDBC puro** (`JdbcTemplate`). Não há JPA/Hibernate: todo comando SQL está escrito
+explicitamente nas classes de `app/src/main/java/br/cesar/bar/repository/`.
+
+| Tela | O que faz | Onde está o SQL |
+|------|-----------|-----------------|
+| **Dashboard** | Indicadores, estatísticas descritivas (média, mediana, desvio padrão, quartis), histograma com tabela de frequências, correlação de Pearson entre tempo de permanência e valor gasto (dispersão, reta de regressão e teste t) e gráficos (faturamento por dia, categoria, hora, produto, forma de pagamento e área) | `DashboardRepository` |
+| **Consultas** | Executa as 5 consultas da entrega e mostra o resultado + o SQL | `ConsultaRepository` |
+| **Produtos** | Inserção, alteração e exclusão em PRODUTO | `ProdutoRepository` |
+| **Mesas** | Inserção, alteração e exclusão em MESA | `MesaRepository` |
+| **Clientes** | Inserção, alteração e exclusão em PESSOA + CLIENTE + TELEFONE (numa transação) | `ClienteRepository` |
+| **Tabelas** | Visualização do conteúdo das 9 tabelas | `TabelaRepository` |
+
+Consultas (todas também em `sql/consultas/consultas.sql`):
+
+1. **Faturamento por categoria** — JOIN, GROUP BY, função de janela `SUM() OVER ()` para o percentual.
+2. **Ranking de atendentes** — JOIN de 6 tabelas, LEFT JOIN do supervisor, `RANK() OVER`.
+3. **Conferência de contas (consumido x pago)** — duas CTEs agregadas, LEFT JOIN, CASE.
+4. **Clientes acima da média de gasto** — CTE, subconsulta com AVG no WHERE, subconsulta correlacionada (produto favorito).
+5. **Hierarquia de supervisão** — autojunção em FUNCIONARIO, STRING_AGG, SUM/AVG.
+
+Erros do banco (chave duplicada, FK, CHECK) aparecem na tela com a mensagem do PostgreSQL:
+por exemplo, excluir um produto que já foi pedido é barrado pela FK de PEDIDO.
+
+### Requisitos da aplicação
+
+- **JDK 17 ou superior** (o Java 8 não serve). Ex.: [Eclipse Temurin 21](https://adoptium.net/).
+- Não é preciso instalar o Maven: o projeto usa o Maven Wrapper (`mvnw.cmd`).
+- O banco `bar` criado pelo `rodar_tudo.ps1` (veja acima).
+
+### Como rodar a aplicação
+
+```powershell
+.\scripts\rodar_tudo.ps1     # (re)cria o banco, se ainda não criou
+cd app
+.\mvnw.cmd spring-boot:run
+```
+
+Depois abra <http://localhost:8080>. Na primeira execução o wrapper baixa o Maven e as
+dependências, o que pode levar alguns minutos.
+
+A conexão usa `localhost:5432`, usuário `postgres`, senha `bd2026`
+(`app/src/main/resources/application.properties`). Para usar outros valores:
+
+```powershell
+$env:DB_URL = "jdbc:postgresql://localhost:5433/bar"; $env:DB_PASSWORD = "minhasenha"
+.\mvnw.cmd spring-boot:run
+```
+
+Para gerar um `.jar` executável: `.\mvnw.cmd package` e depois `java -jar target\bar-1.0.0.jar`.
+
+## Fluxo de trabalho com Git
 
 ### Passo a passo
 
