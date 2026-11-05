@@ -21,9 +21,12 @@ ProjetoBD/
 │   ├── 06_produto.sql
 │   ├── 07_atendimento.sql
 │   ├── 08_pedido.sql
-│   └── 09_pagamento_parcial.sql
+│   ├── 09_pagamento_parcial.sql
+│   ├── 10_indices.sql           # Etapa 04: índices nas FKs usadas pelas consultas/visões
+│   ├── 11_visoes.sql            # Etapa 04: vw_itens_vendidos e vw_historico_cliente
 │   └── consultas/
-│       └── consultas.sql        # Etapa 03: SQL de todas as consultas da aplicação
+│       ├── consultas.sql        # Etapa 03: SQL de todas as consultas da aplicação
+│       └── etapa04_consultas.sql # Etapa 04: anti join, full outer join e subconsultas
 ├── dados/
 │   └── referencia.md            # dados de referência usados nos INSERTs
 ├── scripts/

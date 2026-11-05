@@ -7,10 +7,13 @@
     <h1>Consultas</h1>
     <p class="sub">Cada consulta é executada no banco ao abrir a aba. O SQL executado aparece abaixo do resultado.</p>
 
-    <nav class="abas">
-        <a th:each="c, i : ${consultas}" th:href="@{/consultas/{id}(id=${c.id})}"
-           th:text="${i.count} + '. ' + ${c.titulo}"
-           th:classappend="${c.id == consulta.id} ? 'ativo'"></a>
+    <nav class="abas" th:each="etapa : ${ {'03', '04'} }">
+        <span class="rotulo" th:text="'Etapa ' + ${etapa}"></span>
+        <th:block th:each="c, i : ${consultas}" th:if="${c.etapa == etapa}">
+            <a th:href="@{/consultas/{id}(id=${c.id})}"
+               th:text="${i.count} + '. ' + ${c.titulo}"
+               th:classappend="${c.id == consulta.id} ? 'ativo'"></a>
+        </th:block>
     </nav>
 
     <section class="card">

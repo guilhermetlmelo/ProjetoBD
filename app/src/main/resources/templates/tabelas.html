@@ -5,16 +5,26 @@
 <header th:replace="~{fragments :: topo}"></header>
 <main>
     <h1>Tabelas</h1>
-    <p class="sub">Conteúdo atual de cada tabela do banco.</p>
+    <p class="sub">Conteúdo atual de cada tabela e visão do banco.</p>
 
     <nav class="abas">
+        <span class="rotulo">Tabelas</span>
         <a th:each="n : ${nomes}" th:href="@{/tabelas/{n}(n=${n})}" th:text="${n}"
+           th:classappend="${n == tabela} ? 'ativo'"></a>
+    </nav>
+    <nav class="abas">
+        <span class="rotulo">Visões (Etapa 04)</span>
+        <a th:each="n : ${visoes}" th:href="@{/tabelas/{n}(n=${n})}" th:text="${n}"
            th:classappend="${n == tabela} ? 'ativo'"></a>
     </nav>
 
     <section class="card">
         <h2 th:text="${tabela}"></h2>
-        <th:block th:replace="~{fragments :: resultado(${resultado})}"></th:block>
+        <p class="nota" th:if="${descricao}" th:text="${descricao}"></p>
+        <div class="alerta erro" th:if="${erro}" th:text="${erro}" role="alert"></div>
+        <th:block th:if="${resultado}">
+            <th:block th:replace="~{fragments :: resultado(${resultado})}"></th:block>
+        </th:block>
     </section>
 </main>
 </body>

@@ -38,6 +38,23 @@ public class TabelaRepository {
                   FROM PAGAMENTO_PARCIAL ORDER BY ID_Atendimento, Num_Transacao""");
     }
 
+    /** Visões da Etapa 04 (sql/11_visoes.sql), com a justificativa mostrada na tela. */
+    private static final Map<String, String> VISOES = new LinkedHashMap<>();
+    private static final Map<String, String> DESCRICOES = Map.of(
+            "VW_ITENS_VENDIDOS",
+            "Cada item vendido com o contexto do atendimento: produto, valor (Quantidade x Preço), "
+                    + "mesa, área, cliente e garçom. Junta 6 tabelas (PEDIDO, PRODUTO, ATENDIMENTO, MESA, "
+                    + "PESSOA e FUNCIONARIO) e centraliza a regra do valor do item.",
+            "VW_HISTORICO_CLIENTE",
+            "Ficha do cliente para o programa de fidelidade: visitas, gasto, ticket médio, categoria "
+                    + "favorita, segmento e sugestão de oferecer ou rever a fidelidade. Junta CLIENTE, "
+                    + "PESSOA, ATENDIMENTO, PEDIDO e PRODUTO.");
+
+    static {
+        VISOES.put("VW_ITENS_VENDIDOS", "SELECT * FROM vw_itens_vendidos ORDER BY ID_Atendimento, ID_Pedido, Codigo_Prod");
+        VISOES.put("VW_HISTORICO_CLIENTE", "SELECT * FROM vw_historico_cliente ORDER BY Total_Gasto DESC, Nome");
+    }
+
     private final JdbcTemplate jdbc;
 
     public TabelaRepository(JdbcTemplate jdbc) {
@@ -48,8 +65,23 @@ public class TabelaRepository {
         return SELECTS.keySet();
     }
 
-    public Optional<ResultadoTabela> conteudo(String tabela) {
-        String sql = SELECTS.get(tabela.toUpperCase());
+    public Set<String> visoes() {
+        return VISOES.keySet();
+    }
+
+    public boolean existe(String nome) {
+        String chave = nome.toUpperCase();
+        return SELECTS.containsKey(chave) || VISOES.containsKey(chave);
+    }
+
+    /** Justificativa da visão, ou null para uma tabela. */
+    public String descricao(String nome) {
+        return DESCRICOES.get(nome.toUpperCase());
+    }
+
+    public Optional<ResultadoTabela> conteudo(String nome) {
+        String chave = nome.toUpperCase();
+        String sql = SELECTS.getOrDefault(chave, VISOES.get(chave));
         return sql == null ? Optional.empty() : Optional.of(jdbc.query(sql, Resultados.EXTRATOR));
     }
 }

@@ -276,6 +276,14 @@ input[type="checkbox"] { width: auto; margin-right: 6px; }
     font-size: 0.9rem;
 }
 .abas a.ativo { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.abas + .abas { margin-top: -12px; }
+.abas .rotulo {
+    align-self: center;
+    min-width: 8.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-2);
+}
 
 .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 16px; }
 .tag {

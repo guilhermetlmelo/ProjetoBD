@@ -9,15 +9,17 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Consultas da Etapa 03. O mesmo SQL está em sql/consultas/consultas.sql (entregável).
- * O valor de um item é Quantidade * Preco_Atual, já que PEDIDO não guarda o preço cobrado.
+ * Consultas das Etapas 03 e 04. O mesmo SQL está em sql/consultas/consultas.sql e
+ * sql/consultas/etapa04_consultas.sql (entregáveis). As da Etapa 04 usam as visões de
+ * sql/11_visoes.sql. O valor de um item é Quantidade * Preco_Atual, já que PEDIDO não guarda
+ * o preço cobrado.
  */
 @Repository
 public class ConsultaRepository {
 
     private static final List<Consulta> CONSULTAS = List.of(
             new Consulta(
-                    "faturamento-categoria",
+                    "faturamento-categoria", "03",
                     "Faturamento por categoria de produto",
                     "Quanto cada categoria do cardápio faturou, quantos itens vendeu, em quantos "
                             + "atendimentos apareceu e qual a sua participação no faturamento total.",
@@ -36,7 +38,7 @@ public class ConsultaRepository {
                      ORDER BY "Faturamento (R$)" DESC
                     """),
             new Consulta(
-                    "ranking-atendentes",
+                    "ranking-atendentes", "03",
                     "Ranking de atendentes por faturamento",
                     "Funcionários que atenderam mesas, ordenados pelo valor consumido nos seus "
                             + "atendimentos, com ticket médio e o nome do supervisor de cada um.",
@@ -61,7 +63,7 @@ public class ConsultaRepository {
                      ORDER BY "Posicao", "Funcionario"
                     """),
             new Consulta(
-                    "conferencia-contas",
+                    "conferencia-contas", "03",
                     "Conferência de contas: consumido x pago",
                     "Para cada atendimento, compara o total consumido (PEDIDO x PRODUTO) com a soma "
                             + "dos pagamentos parciais e classifica a conta. As divergências aparecem primeiro.",
@@ -103,7 +105,7 @@ public class ConsultaRepository {
                               a.ID_Atendimento
                     """),
             new Consulta(
-                    "clientes-acima-media",
+                    "clientes-acima-media", "03",
                     "Clientes que gastam acima da média",
                     "Clientes cujo gasto total supera a média de gasto de todos os clientes, com o "
                             + "número de visitas, o gasto por visita e o produto que mais pediram.",
@@ -140,7 +142,7 @@ public class ConsultaRepository {
                      ORDER BY g.total DESC
                     """),
             new Consulta(
-                    "hierarquia-supervisao",
+                    "hierarquia-supervisao", "03",
                     "Hierarquia de supervisão e folha salarial",
                     "Cada gerente com a quantidade de subordinados, os cargos que supervisiona e o "
                             + "custo da equipe, a partir do autorrelacionamento de FUNCIONARIO.",
@@ -158,6 +160,119 @@ public class ConsultaRepository {
                       JOIN FUNCIONARIO f ON f.CPF_Supervisor = s.CPF
                      GROUP BY s.CPF, ps.Nome, s.Matricula, s.Salario
                      ORDER BY "Subordinados" DESC, "Supervisor"
+                    """),
+            new Consulta(
+                    "mesas-ociosas", "04",
+                    "Mesas ociosas (anti join)",
+                    "Mesas que nunca receberam atendimento no período: o LEFT JOIN mantém todas as "
+                            + "mesas e o filtro IS NULL deixa só as que não têm par em ATENDIMENTO.",
+                    List.of("Anti join (LEFT JOIN + IS NULL)", "Função de janela (COUNT OVER)",
+                            "Subconsulta escalar", "Índice idx_atendimento_mesa"),
+                    """
+                    SELECT m.Numero_Mesa                                        AS "Mesa",
+                           m.Localizacao                                        AS "Area",
+                           m.Capacidade                                         AS "Lugares",
+                           COUNT(*) OVER (PARTITION BY m.Localizacao)           AS "Mesas ociosas na area",
+                           (SELECT COUNT(*) FROM MESA m2
+                             WHERE m2.Localizacao = m.Localizacao)              AS "Total de mesas na area"
+                      FROM MESA m
+                      LEFT JOIN ATENDIMENTO a ON a.Numero_Mesa = m.Numero_Mesa
+                     WHERE a.ID_Atendimento IS NULL
+                     ORDER BY m.Localizacao, m.Numero_Mesa
+                    """),
+            new Consulta(
+                    "sabado-domingo", "04",
+                    "Vendas por produto: sábado x domingo (full outer join)",
+                    "Compara as duas noites de maior movimento (19/09 e 20/09). O FULL OUTER JOIN mantém "
+                            + "os produtos vendidos nos dois dias e também os vendidos em só um deles.",
+                    List.of("FULL OUTER JOIN", "CTE (WITH)", "COALESCE", "CASE",
+                            "Visão vw_itens_vendidos"),
+                    """
+                    WITH sabado AS (
+                        SELECT Codigo_Prod, Nome_Produto, Categoria,
+                               SUM(Quantidade) AS qtd,
+                               SUM(Valor_Item) AS valor
+                          FROM vw_itens_vendidos
+                         WHERE Data_Atendimento = DATE '2026-09-19'
+                         GROUP BY Codigo_Prod, Nome_Produto, Categoria
+                    ),
+                    domingo AS (
+                        SELECT Codigo_Prod, Nome_Produto, Categoria,
+                               SUM(Quantidade) AS qtd,
+                               SUM(Valor_Item) AS valor
+                          FROM vw_itens_vendidos
+                         WHERE Data_Atendimento = DATE '2026-09-20'
+                         GROUP BY Codigo_Prod, Nome_Produto, Categoria
+                    )
+                    SELECT COALESCE(s.Nome_Produto, d.Nome_Produto)          AS "Produto",
+                           COALESCE(s.Categoria, d.Categoria)                AS "Categoria",
+                           COALESCE(s.qtd, 0)                                AS "Qtd sabado",
+                           COALESCE(d.qtd, 0)                                AS "Qtd domingo",
+                           COALESCE(s.valor, 0)                              AS "Faturamento sabado (R$)",
+                           COALESCE(d.valor, 0)                              AS "Faturamento domingo (R$)",
+                           COALESCE(d.valor, 0) - COALESCE(s.valor, 0)       AS "Variacao (R$)",
+                           CASE
+                               WHEN s.Codigo_Prod IS NULL THEN 'So no domingo'
+                               WHEN d.Codigo_Prod IS NULL THEN 'So no sabado'
+                               ELSE 'Nos dois dias'
+                           END                                               AS "Situacao"
+                      FROM sabado s
+                      FULL OUTER JOIN domingo d ON d.Codigo_Prod = s.Codigo_Prod
+                     ORDER BY "Situacao" DESC, ABS(COALESCE(d.valor, 0) - COALESCE(s.valor, 0)) DESC, "Produto"
+                    """),
+            new Consulta(
+                    "todas-categorias", "04",
+                    "Clientes que pediram de todas as categorias (subconsulta)",
+                    "Divisão relacional: clientes para os quais NÃO EXISTE categoria do cardápio que "
+                            + "eles NÃO tenham pedido. Público ideal para divulgar novidades.",
+                    List.of("NOT EXISTS duplo (divisão relacional)", "Subconsultas escalares",
+                            "Subconsulta no FROM", "Visão vw_itens_vendidos"),
+                    """
+                    SELECT p.Nome                                                   AS "Cliente",
+                           CASE WHEN c.Fidelidade_Ativa THEN 'Sim' ELSE 'Nao' END   AS "Fidelidade",
+                           (SELECT COUNT(*) FROM ATENDIMENTO a
+                             WHERE a.CPF_Cliente = c.CPF)                           AS "Visitas",
+                           (SELECT SUM(v.Valor_Item) FROM vw_itens_vendidos v
+                             WHERE v.CPF_Cliente = c.CPF)                           AS "Total gasto (R$)"
+                      FROM CLIENTE c
+                      JOIN PESSOA p ON p.CPF = c.CPF
+                     WHERE NOT EXISTS (
+                               SELECT 1
+                                 FROM (SELECT DISTINCT Categoria FROM PRODUTO) cat
+                                WHERE NOT EXISTS (
+                                          SELECT 1
+                                            FROM vw_itens_vendidos v
+                                           WHERE v.CPF_Cliente = c.CPF
+                                             AND v.Categoria = cat.Categoria))
+                     ORDER BY "Total gasto (R$)" DESC
+                    """),
+            new Consulta(
+                    "acima-media-categoria", "04",
+                    "Produtos mais caros que a média da categoria (subconsulta)",
+                    "A subconsulta correlacionada do WHERE calcula a média de preço da categoria de cada "
+                            + "produto; as do SELECT comparam o que ele vende com a média da categoria.",
+                    List.of("Subconsulta correlacionada no WHERE", "Subconsultas no SELECT", "AVG",
+                            "Índice idx_pedido_produto"),
+                    """
+                    SELECT pr.Categoria                                                AS "Categoria",
+                           pr.Nome_Produto                                             AS "Produto",
+                           pr.Preco_Atual                                              AS "Preco (R$)",
+                           (SELECT ROUND(AVG(p2.Preco_Atual), 2)
+                              FROM PRODUTO p2
+                             WHERE p2.Categoria = pr.Categoria)                        AS "Preco medio da categoria (R$)",
+                           (SELECT COALESCE(SUM(pe.Quantidade), 0)
+                              FROM PEDIDO pe
+                             WHERE pe.Codigo_Prod = pr.Codigo_Prod)                    AS "Qtd vendida",
+                           (SELECT ROUND(SUM(pe.Quantidade)::NUMERIC
+                                         / COUNT(DISTINCT p3.Codigo_Prod), 1)
+                              FROM PRODUTO p3
+                              LEFT JOIN PEDIDO pe ON pe.Codigo_Prod = p3.Codigo_Prod
+                             WHERE p3.Categoria = pr.Categoria)                        AS "Qtd media vendida na categoria"
+                      FROM PRODUTO pr
+                     WHERE pr.Preco_Atual > (SELECT AVG(p2.Preco_Atual)
+                                               FROM PRODUTO p2
+                                              WHERE p2.Categoria = pr.Categoria)
+                     ORDER BY pr.Categoria, pr.Preco_Atual DESC
                     """)
     );
 
