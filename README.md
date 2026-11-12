@@ -24,6 +24,9 @@ ProjetoBD/
 │   ├── 09_pagamento_parcial.sql
 │   ├── 10_indices.sql           # Etapa 04: índices nas FKs usadas pelas consultas/visões
 │   ├── 11_visoes.sql            # Etapa 04: vw_itens_vendidos e vw_historico_cliente
+│   ├── 12_funcoes.sql           # Etapa 05: fn_valor_conta e fn_situacao_conta
+│   ├── 13_procedimentos.sql     # Etapa 05: reajuste de precos e redistribuicao de supervisores (cursor)
+│   ├── 14_triggers.sql          # Etapa 05: log de precos e bloqueio de pedido em conta fechada
 │   └── consultas/
 │       ├── consultas.sql        # Etapa 03: SQL de todas as consultas da aplicação
 │       └── etapa04_consultas.sql # Etapa 04: anti join, full outer join e subconsultas
