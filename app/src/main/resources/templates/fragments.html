@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="${titulo} + ' · Bar'">Bar</title>
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
     <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 
@@ -16,9 +17,12 @@
         <nav class="nav">
             <a th:href="@{/}" th:classappend="${ativo == 'dashboard'} ? 'ativo'">Dashboard</a>
             <a th:href="@{/consultas}" th:classappend="${ativo == 'consultas'} ? 'ativo'">Consultas</a>
+            <a th:href="@{/atendimentos}" th:classappend="${ativo == 'atendimentos'} ? 'ativo'">Atendimentos</a>
+            <a th:href="@{/rotinas}" th:classappend="${ativo == 'rotinas'} ? 'ativo'">Rotinas do banco</a>
             <a th:href="@{/produtos}" th:classappend="${ativo == 'produtos'} ? 'ativo'">Produtos</a>
             <a th:href="@{/mesas}" th:classappend="${ativo == 'mesas'} ? 'ativo'">Mesas</a>
             <a th:href="@{/clientes}" th:classappend="${ativo == 'clientes'} ? 'ativo'">Clientes</a>
+            <a th:href="@{/funcionarios}" th:classappend="${ativo == 'funcionarios'} ? 'ativo'">Funcionários</a>
             <a th:href="@{/tabelas}" th:classappend="${ativo == 'tabelas'} ? 'ativo'">Tabelas</a>
         </nav>
     </div>
@@ -43,7 +47,7 @@
             <tr th:each="linha : ${res.linhas}">
                 <td th:each="v, i : ${linha}"
                     th:classappend="${res.numericas[i.index]} ? 'num'"
-                    th:text="${v == null} ? '—' : ${v}"></td>
+                    th:text="${@fmt.celula(v)}"></td>
             </tr>
             <tr th:if="${res.linhas.isEmpty()}">
                 <td th:colspan="${res.colunas.size()}">Nenhuma linha.</td>

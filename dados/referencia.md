@@ -1,4 +1,4 @@
-# Dados de referência — Projeto BD
+# Dados de referência do Projeto BD
 
 Lista fixa de valores que todo mundo usa nos INSERTs.
 Se cada um inventar os seus, as chaves estrangeiras não batem na integração.
@@ -18,10 +18,10 @@ para facilitar identificar de onde veio na hora de debugar.
 | 10000000004 | Eduardo Farias Melo | Cliente |
 | 10000000005 | Fernanda Souza Rocha | Cliente |
 | 10000000006 | Gabriel Torres Pinto | Cliente |
-| 20000000001 | Helena Martins Sa | Funcionário — Gerente |
-| 20000000002 | Igor Cavalcanti Lins | Funcionário — Bartender |
-| 20000000003 | Juliana Barros Neves | Funcionário — Garçonete |
-| 20000000004 | Lucas Andrade Vieira | Funcionário — Garçom |
+| 20000000001 | Helena Martins Sa | Funcionário (Gerente) |
+| 20000000002 | Igor Cavalcanti Lins | Funcionário (Bartender) |
+| 20000000003 | Juliana Barros Neves | Funcionário (Garçonete) |
+| 20000000004 | Lucas Andrade Vieira | Funcionário (Garçom) |
 
 Nomes sem acento, para evitar problema de encoding entre as máquinas.
 

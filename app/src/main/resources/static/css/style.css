@@ -12,6 +12,13 @@
     --accent: #2a78d6;
     --accent-ink: #ffffff;
     --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --series-3: #1baf7a;
+    --series-4: #eda100;
+    --series-5: #e87ba4;
+    --series-6: #008300;
+    --series-7: #6250d6;
+    --series-8: #e34948;
     --good: #006300;
     --good-bg: #e3f3e3;
     --critical: #d03b3b;
@@ -37,6 +44,13 @@
         --border: rgba(255, 255, 255, 0.10);
         --accent: #3987e5;
         --series-1: #3987e5;
+        --series-2: #d95926;
+        --series-3: #199e70;
+        --series-4: #c98500;
+        --series-5: #d55181;
+        --series-6: #008300;
+        --series-7: #9085e9;
+        --series-8: #e66767;
         --good: #0ca30c;
         --good-bg: #0f2a0f;
         --critical: #e66767;
@@ -140,7 +154,7 @@ h2 { font-size: 1.1rem; margin: 0 0 12px; }
 /* ---- Indicadores ---- */
 .kpis {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(138px, 1fr));
     gap: 12px;
     margin-bottom: 20px;
 }
@@ -303,3 +317,74 @@ pre.sql {
     font: 0.85rem/1.5 var(--mono);
     color: var(--text);
 }
+
+/* ---- Filtros (dashboard e consultas) ---- */
+.filtros {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 20px;
+}
+.filtros > div { min-width: 150px; flex: 1 1 150px; max-width: 240px; }
+.filtros .botoes { margin-top: 0; flex: 0 0 auto; }
+.filtros .resumo { flex-basis: 100%; max-width: none; color: var(--muted); font-size: 0.85rem; }
+
+.kpi .tendencia { font-size: 0.8rem; font-weight: 600; }
+
+/* Dashboard: 8 indicadores em 4 colunas (2 no tablet, 1 no celular) */
+.kpis.quatro { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 900px) { .kpis.quatro { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .kpis.quatro { grid-template-columns: 1fr; } }
+.kpi .tendencia.sobe { color: var(--good); }
+.kpi .tendencia.desce { color: var(--critical); }
+
+.kpis.compacto { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.kpis.compacto .valor { font-size: 1.25rem; }
+
+/* ---- Seletor dentro do card (troca a métrica de um gráfico) ---- */
+.seletor { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.seletor button {
+    font: inherit;
+    font-size: 0.82rem;
+    padding: 4px 10px;
+    border: 0;
+    background: var(--surface);
+    color: var(--text-2);
+    cursor: pointer;
+}
+.seletor button + button { border-left: 1px solid var(--border); }
+.seletor button.ativo { background: var(--surface-2); color: var(--text); font-weight: 600; }
+
+/* ---- Selos de situação ---- */
+.selo {
+    display: inline-block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--text-2);
+}
+.selo.ok { background: var(--good-bg); color: var(--good); }
+.selo.alerta-selo { background: var(--warning-bg); color: var(--warning-ink); }
+.selo.ruim { background: var(--critical-bg); color: var(--critical); }
+
+/* ---- Saída de procedimentos (RAISE NOTICE) ---- */
+pre.saida {
+    margin: 0 0 12px;
+    padding: 12px 14px;
+    background: var(--surface-2);
+    border-radius: 8px;
+    font: 0.85rem/1.5 var(--mono);
+    white-space: pre-wrap;
+}
+code { font-family: var(--mono); font-size: 0.88em; }
+.linha-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.linha-form > div { flex: 1 1 160px; }
+.linha-form .botoes { margin-top: 0; flex: 0 0 auto; }
+h3 { font-size: 0.95rem; margin: 16px 0 8px; }

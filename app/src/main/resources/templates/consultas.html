@@ -4,17 +4,37 @@
 <body>
 <header th:replace="~{fragments :: topo}"></header>
 <main>
-    <h1>Consultas</h1>
-    <p class="sub">Cada consulta é executada no banco ao abrir a aba. O SQL executado aparece abaixo do resultado.</p>
+    <h1>Consultas e visões</h1>
+    <p class="sub">Consultas das Etapas 03 e 04 e as visões do banco, executadas ao abrir cada aba.
+        Use os filtros para mudar o período ou o recorte; o SQL executado aparece no fim da página.</p>
 
-    <nav class="abas" th:each="etapa : ${ {'03', '04'} }">
-        <span class="rotulo" th:text="'Etapa ' + ${etapa}"></span>
-        <th:block th:each="c, i : ${consultas}" th:if="${c.etapa == etapa}">
-            <a th:href="@{/consultas/{id}(id=${c.id})}"
-               th:text="${i.count} + '. ' + ${c.titulo}"
+    <nav class="abas" th:each="grupo : ${ {'03', '04', 'visoes'} }">
+        <span class="rotulo" th:text="${grupo == 'visoes'} ? 'Visões (Etapa 04)' : 'Consultas Etapa ' + ${grupo}"></span>
+        <th:block th:each="c : ${consultas}" th:if="${c.grupo == grupo}">
+            <a th:href="@{/consultas/{id}(id=${c.id})}" th:text="${c.titulo}"
                th:classappend="${c.id == consulta.id} ? 'ativo'"></a>
         </th:block>
     </nav>
+
+    <form class="filtros" method="get" th:if="${!consulta.parametros.isEmpty()}"
+          th:action="@{/consultas/{id}(id=${consulta.id})}">
+        <div th:each="p : ${consulta.parametros}">
+            <label th:for="${p.nome}" th:text="${p.rotulo}"></label>
+            <input th:if="${p.tipo == 'data'}" type="date" th:id="${p.nome}" th:name="${p.nome}"
+                   th:value="${valores[p.nome]}">
+            <input th:if="${p.tipo == 'numero'}" type="number" min="0" th:id="${p.nome}" th:name="${p.nome}"
+                   th:value="${valores[p.nome]}">
+            <select th:if="${p.tipo == 'lista'}" th:id="${p.nome}" th:name="${p.nome}">
+                <option value="">Todos</option>
+                <option th:if="${opcoes != null}" th:each="o : ${opcoes[p.nome]}" th:value="${o}" th:text="${o}"
+                        th:selected="${o == valores[p.nome]}"></option>
+            </select>
+        </div>
+        <div class="botoes">
+            <button class="btn primario" type="submit">Filtrar</button>
+            <a class="btn" th:href="@{/consultas/{id}(id=${consulta.id})}">Limpar</a>
+        </div>
+    </form>
 
     <section class="card">
         <h2 th:text="${consulta.titulo}"></h2>
@@ -24,15 +44,40 @@
         </div>
 
         <div class="alerta erro" th:if="${erro}" th:text="${erro}" role="alert"></div>
+
         <th:block th:if="${resultado}">
-            <th:block th:replace="~{fragments :: resultado(${resultado})}"></th:block>
+            <div class="kpis compacto" id="indicadores-consulta"></div>
+            <div class="grafico" th:classappend="${consulta.grafico.tipo == 'barh'} ? 'alto'"
+                 th:if="${!resultado.linhas.isEmpty()}">
+                <canvas id="g-consulta" role="img" th:aria-label="${consulta.grafico.titulo}"></canvas>
+            </div>
+            <p class="nota" style="margin-top:8px" th:if="${!resultado.linhas.isEmpty()}"
+               th:text="'Gráfico: ' + ${consulta.grafico.titulo}"></p>
         </th:block>
+    </section>
+
+    <section class="card" th:if="${resultado}">
+        <h2>Resultado</h2>
+        <th:block th:replace="~{fragments :: resultado(${resultado})}"></th:block>
     </section>
 
     <section class="card">
         <h2>SQL</h2>
+        <p class="nota">Os filtros entram como parâmetros nomeados (<code>:inicio</code>, <code>:area</code>...).
+            Campo vazio vira NULL e a condição deixa de filtrar.</p>
         <pre class="sql" th:text="${consulta.sql}"></pre>
     </section>
 </main>
+
+<script th:src="@{/js/vendor/chart.umd.min.js}"></script>
+<script th:src="@{/js/graficos.js}"></script>
+<script th:inline="javascript" th:if="${resultado}">
+    window.CONSULTA = {
+        grafico: /*[[${consulta.grafico}]]*/ {},
+        colunas: /*[[${resultado.colunas}]]*/ [],
+        linhas: /*[[${resultado.linhas}]]*/ []
+    };
+</script>
+<script th:src="@{/js/consultas.js}"></script>
 </body>
 </html>

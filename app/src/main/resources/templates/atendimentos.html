@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Atendimentos')}"></head>
+<body>
+<header th:replace="~{fragments :: topo}"></header>
+<main>
+    <h1>Atendimentos</h1>
+    <p class="sub">Contas das mesas (ATENDIMENTO), com os pedidos e pagamentos parciais. O valor e a situação de
+        cada conta são calculados pelas funções <code>fn_valor_conta</code> e <code>fn_situacao_conta</code>.</p>
+
+    <th:block th:replace="~{fragments :: mensagens}"></th:block>
+
+    <section class="card">
+        <h2>Abrir atendimento</h2>
+        <form th:action="@{/atendimentos/novo}" method="post">
+            <div class="form-grade">
+                <div>
+                    <label for="id">Nº do atendimento</label>
+                    <input id="id" name="id" type="number" min="1" required th:value="${proximoId}">
+                </div>
+                <div>
+                    <label for="abertura">Abertura</label>
+                    <input id="abertura" name="abertura" type="datetime-local" required th:value="${agora}">
+                </div>
+                <div>
+                    <label for="cliente">Cliente</label>
+                    <select id="cliente" name="cliente" required>
+                        <option value="">Escolha...</option>
+                        <option th:each="o : ${clientes}" th:value="${o.valor}" th:text="${o.texto}"></option>
+                    </select>
+                </div>
+                <div>
+                    <label for="garcom">Atendente</label>
+                    <select id="garcom" name="garcom" required>
+                        <option value="">Escolha...</option>
+                        <option th:each="o : ${garcons}" th:value="${o.valor}" th:text="${o.texto}"></option>
+                    </select>
+                </div>
+                <div>
+                    <label for="mesa">Mesa</label>
+                    <select id="mesa" name="mesa" required>
+                        <option value="">Escolha...</option>
+                        <option th:each="o : ${mesas}" th:value="${o.valor}" th:text="${o.texto}"></option>
+                    </select>
+                </div>
+            </div>
+            <div class="botoes">
+                <button class="btn primario" type="submit">Abrir conta</button>
+            </div>
+        </form>
+    </section>
+
+    <form class="filtros" method="get" th:action="@{/atendimentos}">
+        <div>
+            <label for="f-status">Status</label>
+            <select id="f-status" name="status">
+                <option value="">Todos</option>
+                <option th:each="s : ${ {'ABERTA', 'FECHADA'} }" th:value="${s}" th:text="${s}"
+                        th:selected="${s == filtro[0]}"></option>
+            </select>
+        </div>
+        <div>
+            <label for="f-situacao">Situação (fn_situacao_conta)</label>
+            <select id="f-situacao" name="situacao">
+                <option value="">Todas</option>
+                <option th:each="s : ${situacoes}" th:value="${s}" th:text="${s}"
+                        th:selected="${s == filtro[1]}"></option>
+            </select>
+        </div>
+        <div>
+            <label for="f-inicio">De</label>
+            <input id="f-inicio" name="inicio" type="date" th:value="${filtro[2]}">
+        </div>
+        <div>
+            <label for="f-fim">Até</label>
+            <input id="f-fim" name="fim" type="date" th:value="${filtro[3]}">
+        </div>
+        <div class="botoes">
+            <button class="btn primario" type="submit">Filtrar</button>
+            <a class="btn" th:href="@{/atendimentos}">Limpar</a>
+        </div>
+    </form>
+
+    <section class="kpis">
+        <div class="kpi">
+            <div class="rotulo">Atendimentos listados</div>
+            <div class="valor" th:text="${atendimentos.size()}"></div>
+            <div class="extra" th:text="${abertos} + ' com conta aberta'"></div>
+        </div>
+        <div class="kpi">
+            <div class="rotulo">Consumido</div>
+            <div class="valor" th:text="${@fmt.reais(totalConsumido)}"></div>
+            <div class="extra">soma de fn_valor_conta</div>
+        </div>
+        <div class="kpi">
+            <div class="rotulo">Pago</div>
+            <div class="valor" th:text="${@fmt.reais(totalPago)}"></div>
+            <div class="extra">soma dos pagamentos parciais</div>
+        </div>
+        <div class="kpi">
+            <div class="rotulo">Saldo a receber</div>
+            <div class="valor" th:text="${@fmt.reais(totalConsumido.subtract(totalPago))}"></div>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>Contas</h2>
+        <div class="tabela-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th class="num">Nº</th>
+                    <th>Abertura</th>
+                    <th>Cliente</th>
+                    <th>Atendente</th>
+                    <th>Mesa</th>
+                    <th>Status</th>
+                    <th class="num">Consumido (R$)</th>
+                    <th class="num">Pago (R$)</th>
+                    <th>Situação</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="a : ${atendimentos}">
+                    <td class="num" th:text="${a.id}"></td>
+                    <td th:text="${@fmt.data(a.abertura)}"></td>
+                    <td th:text="${a.cliente}"></td>
+                    <td th:text="${a.garcom}"></td>
+                    <td th:text="${a.mesa} + ' · ' + ${a.localizacao}"></td>
+                    <td th:text="${a.status}"></td>
+                    <td class="num" th:text="${@fmt.num(a.consumido, 2)}"></td>
+                    <td class="num" th:text="${@fmt.num(a.pago, 2)}"></td>
+                    <td><span class="selo" th:text="${a.situacao}"
+                              th:classappend="${a.situacao == 'QUITADA'} ? 'ok' : (${a.situacao == 'PARCIAL' or a.situacao == 'EM ABERTO'} ? 'alerta-selo' : '')"></span></td>
+                    <td class="acoes"><a class="btn pequeno" th:href="@{/atendimentos/{id}(id=${a.id})}">Abrir</a></td>
+                </tr>
+                <tr th:if="${atendimentos.isEmpty()}"><td colspan="10">Nenhum atendimento com esses filtros.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="contagem" th:text="${atendimentos.size()} + ' atendimento(s)'"></p>
+    </section>
+</main>
+</body>
+</html>

@@ -88,10 +88,7 @@ public class ClienteRepository {
     }
 
     private void inserirTelefones(String cpf, String telefones) {
-        if (telefones == null) {
-            return;
-        }
-        List<String> lista = Arrays.stream(telefones.split("[,;\\s]+"))
+        List<String> lista = Arrays.stream(telefones.split("[,;]+"))
                 .map(t -> t.replaceAll("\\D", ""))
                 .filter(t -> !t.isEmpty())
                 .distinct()

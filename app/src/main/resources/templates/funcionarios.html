@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Funcionários')}"></head>
+<body>
+<header th:replace="~{fragments :: topo}"></header>
+<main>
+    <h1>Funcionários</h1>
+    <p class="sub">Cada funcionário grava em PESSOA, FUNCIONARIO e TELEFONE numa única transação.
+        O supervisor é o autorrelacionamento de FUNCIONARIO.</p>
+
+    <th:block th:replace="~{fragments :: mensagens}"></th:block>
+
+    <section class="card">
+        <h2 th:text="${edicao} ? 'Alterar funcionário ' + ${form.nome} : 'Novo funcionário'">Novo funcionário</h2>
+        <form th:action="@{/funcionarios/salvar}" method="post">
+            <input type="hidden" name="edicao" th:value="${edicao}">
+            <div class="form-grade">
+                <div>
+                    <label for="cpf">CPF (11 dígitos)</label>
+                    <input id="cpf" name="cpf" required pattern="\d{11}" maxlength="11" inputmode="numeric"
+                           th:value="${form.cpf}" th:readonly="${edicao}">
+                </div>
+                <div>
+                    <label for="nome">Nome</label>
+                    <input id="nome" name="nome" maxlength="80" required th:value="${form.nome}">
+                </div>
+                <div>
+                    <label for="matricula">Matrícula</label>
+                    <input id="matricula" name="matricula" maxlength="10" required th:value="${form.matricula}">
+                </div>
+                <div>
+                    <label for="cargo">Cargo</label>
+                    <input id="cargo" name="cargo" maxlength="40" required list="lista-cargos" th:value="${form.cargo}">
+                    <datalist id="lista-cargos">
+                        <option th:each="c : ${cargos}" th:value="${c}"></option>
+                    </datalist>
+                </div>
+                <div>
+                    <label for="salario">Salário (R$)</label>
+                    <input id="salario" name="salario" type="number" min="0.01" step="0.01" required
+                           th:value="${form.salario}">
+                </div>
+                <div>
+                    <label for="cpfSupervisor">Supervisor</label>
+                    <select id="cpfSupervisor" name="cpfSupervisor">
+                        <option value="">Sem supervisor</option>
+                        <option th:each="s : ${supervisores}" th:if="${s.valor != form.cpf}"
+                                th:value="${s.valor}" th:text="${s.texto}"
+                                th:selected="${s.valor == form.cpfSupervisor}"></option>
+                    </select>
+                </div>
+                <div>
+                    <label for="rua">Rua</label>
+                    <input id="rua" name="rua" maxlength="80" th:value="${form.rua}">
+                </div>
+                <div>
+                    <label for="numero">Número</label>
+                    <input id="numero" name="numero" maxlength="10" th:value="${form.numero}">
+                </div>
+                <div>
+                    <label for="bairro">Bairro</label>
+                    <input id="bairro" name="bairro" maxlength="50" th:value="${form.bairro}">
+                </div>
+                <div>
+                    <label for="cep">CEP</label>
+                    <input id="cep" name="cep" maxlength="9" placeholder="00000-000" th:value="${form.cep}">
+                </div>
+                <div>
+                    <label for="telefones">Telefones (separe com vírgula)</label>
+                    <input id="telefones" name="telefones" placeholder="81988880000" th:value="${form.telefones}">
+                </div>
+            </div>
+            <div class="botoes">
+                <button class="btn primario" type="submit" th:text="${edicao} ? 'Salvar alterações' : 'Inserir'">Inserir</button>
+                <a class="btn" th:if="${edicao}" th:href="@{/funcionarios}">Cancelar</a>
+            </div>
+        </form>
+    </section>
+
+    <section class="card">
+        <div class="card-titulo">
+            <h2>Funcionários cadastrados</h2>
+            <form method="get" th:action="@{/funcionarios}" class="linha-form" style="max-width:360px">
+                <div>
+                    <label for="filtro-cargo">Filtrar por cargo</label>
+                    <select id="filtro-cargo" name="cargo" onchange="this.form.submit()">
+                        <option value="">Todos</option>
+                        <option th:each="c : ${cargos}" th:value="${c}" th:text="${c}"
+                                th:selected="${c == cargoFiltro}"></option>
+                    </select>
+                </div>
+            </form>
+        </div>
+        <p class="nota">Quem já atendeu mesa não pode ser excluído (FK em ATENDIMENTO). Ao excluir um gerente,
+            a equipe dele fica sem supervisor (ON DELETE SET NULL).</p>
+        <div class="tabela-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th>Matrícula</th>
+                    <th>Nome</th>
+                    <th>Cargo</th>
+                    <th class="num">Salário (R$)</th>
+                    <th>Supervisor</th>
+                    <th>Telefones</th>
+                    <th class="num">Atendimentos</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="f : ${funcionarios}">
+                    <td th:text="${f.matricula}"></td>
+                    <td th:text="${f.nome}"></td>
+                    <td th:text="${f.cargo}"></td>
+                    <td class="num" th:text="${@fmt.num(f.salario, 2)}"></td>
+                    <td th:text="${f.nomeSupervisor ?: '-'}"></td>
+                    <td th:text="${f.telefones.isEmpty()} ? '-' : ${f.telefones}"></td>
+                    <td class="num" th:text="${f.atendimentos}"></td>
+                    <td class="acoes">
+                        <a class="btn pequeno" th:href="@{/funcionarios(editar=${f.cpf})}">Editar</a>
+                        <form th:action="@{/funcionarios/{cpf}/excluir(cpf=${f.cpf})}" method="post"
+                              onsubmit="return confirm('Excluir este funcionário (e a pessoa/telefones)?');">
+                            <button class="btn pequeno perigo" type="submit">Excluir</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="contagem" th:text="${funcionarios.size()} + ' funcionário(s)'"></p>
+    </section>
+</main>
+</body>
+</html>

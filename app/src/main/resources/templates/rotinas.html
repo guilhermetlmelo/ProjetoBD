@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Rotinas do banco')}"></head>
+<body>
+<header th:replace="~{fragments :: topo}"></header>
+<main>
+    <h1>Funções, procedimentos e triggers</h1>
+    <p class="sub">As rotinas da Etapa 05 executadas pela interface. Cada bloco mostra a chamada, o resultado e
+        o efeito nos dados. O código de cada rotina é lido do próprio banco com <code>pg_get_functiondef</code>.</p>
+
+    <nav class="abas">
+        <span class="rotulo">Ir para</span>
+        <a href="#funcoes">Funções</a>
+        <a href="#reajuste">Reajuste de preços + log</a>
+        <a href="#redistribuir">Redistribuição de supervisores</a>
+        <a href="#trigger">Bloqueio de pedido</a>
+    </nav>
+
+    <!-- ============================================================ FUNÇÕES -->
+    <section class="card" id="funcoes">
+        <h2>Funções fn_valor_conta e fn_situacao_conta</h2>
+        <p class="nota">fn_valor_conta soma quantidade x preço dos itens da conta; fn_situacao_conta compara com os
+            pagamentos parciais e devolve SEM CONSUMO, EM ABERTO, PARCIAL, QUITADA ou PAGO A MAIS. As duas também
+            são usadas nas telas de Atendimentos e no dashboard.</p>
+
+        <form class="linha-form" method="get" th:action="@{/rotinas}" style="max-width:420px">
+            <div>
+                <label for="conta">Nº do atendimento</label>
+                <input id="conta" name="conta" type="number" min="1" required th:value="${conta}">
+            </div>
+            <div class="botoes"><button class="btn primario" type="submit">Executar funções</button></div>
+        </form>
+
+        <div class="alerta erro" style="margin-top:12px" th:if="${erroFuncao}" th:text="${erroFuncao}"></div>
+        <th:block th:if="${funcao}">
+            <pre class="saida" style="margin-top:12px" th:text="'SELECT fn_valor_conta(' + ${conta} + '), fn_situacao_conta(' + ${conta} + ');'"></pre>
+            <section class="kpis compacto">
+                <div class="kpi"><div class="rotulo">fn_valor_conta</div>
+                    <div class="valor" th:text="${@fmt.reais(funcao.valor)}"></div></div>
+                <div class="kpi"><div class="rotulo">Pago (PAGAMENTO_PARCIAL)</div>
+                    <div class="valor" th:text="${@fmt.reais(funcao.pago)}"></div></div>
+                <div class="kpi"><div class="rotulo">fn_situacao_conta</div>
+                    <div class="valor" th:text="${funcao.situacao}"></div></div>
+            </section>
+            <p class="nota"><a th:href="@{/atendimentos/{id}(id=${conta})}">Abrir esta conta em Atendimentos</a></p>
+        </th:block>
+
+        <div class="grade" style="margin-top:12px">
+            <div>
+                <h3>Todas as contas por situação</h3>
+                <div class="grafico"><canvas id="g-situacao" role="img" aria-label="Contas por situação"></canvas></div>
+            </div>
+            <div>
+                <h3>Contas que não estão quitadas</h3>
+                <th:block th:replace="~{fragments :: resultado(${pendentes})}"></th:block>
+            </div>
+        </div>
+
+        <details class="dados">
+            <summary>Código de fn_valor_conta e fn_situacao_conta</summary>
+            <pre class="sql" style="margin-top:8px" th:text="${fontes['fn_valor_conta']}"></pre>
+            <pre class="sql" style="margin-top:8px" th:text="${fontes['fn_situacao_conta']}"></pre>
+        </details>
+    </section>
+
+    <!-- ============================================================ PROCEDIMENTO 1 + TRIGGER 1 -->
+    <section class="card" id="reajuste">
+        <h2>Procedimento sp_reajustar_preco_categoria + trigger trg_log_preco_produto</h2>
+        <p class="nota">O procedimento aplica um percentual em todos os produtos de uma categoria. Para cada preço
+            alterado, o trigger AFTER UPDATE grava uma linha em LOG_PRECO_PRODUTO com o preço antigo, o novo, a data
+            e o usuário. Alterar o preço na tela Produtos também dispara o trigger.</p>
+
+        <th:block th:if="${secao == 'reajuste'}">
+            <th:block th:replace="~{fragments :: mensagens}"></th:block>
+            <pre class="saida" th:if="${avisos != null and !avisos.isEmpty()}"><span th:each="av : ${avisos}"
+                 th:text="'NOTICE:  ' + ${av}" style="display:block"></span></pre>
+        </th:block>
+
+        <form class="linha-form" method="post" th:action="@{/rotinas/reajuste}">
+            <div>
+                <label for="categoria">Categoria</label>
+                <select id="categoria" name="categoria" required>
+                    <option th:each="c : ${categorias}" th:value="${c}" th:text="${c}"></option>
+                </select>
+            </div>
+            <div>
+                <label for="percentual">Percentual (%)</label>
+                <input id="percentual" name="percentual" type="number" step="0.01" value="10" required>
+            </div>
+            <div class="botoes"><button class="btn primario" type="submit">CALL sp_reajustar_preco_categoria</button></div>
+        </form>
+        <p class="nota" style="margin-top:8px">Use um valor negativo para reduzir (ex.: -10). Percentual menor ou igual a
+            -100 é recusado pelo procedimento.</p>
+
+        <div class="grade" style="margin-top:12px">
+            <div>
+                <h3>Preço médio atual por categoria</h3>
+                <div class="grafico"><canvas id="g-preco" role="img" aria-label="Preço médio por categoria"></canvas></div>
+            </div>
+            <div>
+                <h3 th:text="'LOG_PRECO_PRODUTO (' + ${totalLogs} + ' registro(s), últimos 50)'"></h3>
+                <th:block th:replace="~{fragments :: resultado(${logPrecos})}"></th:block>
+            </div>
+        </div>
+
+        <details class="dados">
+            <summary>Código do procedimento e da função do trigger</summary>
+            <pre class="sql" style="margin-top:8px" th:text="${fontes['sp_reajustar_preco_categoria']}"></pre>
+            <pre class="sql" style="margin-top:8px" th:text="${fontes['fn_trg_log_preco_produto']}"></pre>
+        </details>
+    </section>
+
+    <!-- ============================================================ PROCEDIMENTO 2 -->
+    <section class="card" id="redistribuir">
+        <h2>Procedimento sp_redistribuir_sem_supervisor (cursor)</h2>
+        <p class="nota">Percorre com um cursor os funcionários sem supervisor e entrega cada um ao gerente que tem menos
+            supervisionados naquele momento. Para ver o efeito: simule a saída de um gerente (a equipe dele fica sem
+            supervisor, como faria o ON DELETE SET NULL) e depois execute o procedimento.</p>
+
+        <th:block th:if="${secao == 'redistribuir'}">
+            <th:block th:replace="~{fragments :: mensagens}"></th:block>
+            <pre class="saida" th:if="${avisos != null and !avisos.isEmpty()}"><span th:each="av : ${avisos}"
+                 th:text="'NOTICE:  ' + ${av}" style="display:block"></span></pre>
+        </th:block>
+
+        <div class="linha-form">
+            <form class="linha-form" method="post" th:action="@{/rotinas/simular-saida}" style="flex:2 1 320px">
+                <div>
+                    <label for="gerente">1. Simular saída do gerente</label>
+                    <select id="gerente" name="gerente" required>
+                        <option th:each="g : ${gerentes}" th:value="${g.valor}" th:text="${g.texto}"></option>
+                    </select>
+                </div>
+                <div class="botoes"><button class="btn" type="submit">Deixar equipe sem supervisor</button></div>
+            </form>
+            <form method="post" th:action="@{/rotinas/redistribuir}" class="botoes">
+                <button class="btn primario" type="submit">2. CALL sp_redistribuir_sem_supervisor()</button>
+            </form>
+        </div>
+
+        <div class="grade" style="margin-top:12px">
+            <div>
+                <h3>Supervisionados por gerente</h3>
+                <div class="grafico"><canvas id="g-equipes" role="img" aria-label="Supervisionados por gerente"></canvas></div>
+            </div>
+            <div>
+                <h3>Funcionários sem supervisor</h3>
+                <th:block th:replace="~{fragments :: resultado(${semSupervisor})}"></th:block>
+            </div>
+        </div>
+
+        <details class="dados">
+            <summary>Código do procedimento</summary>
+            <pre class="sql" style="margin-top:8px" th:text="${fontes['sp_redistribuir_sem_supervisor']}"></pre>
+        </details>
+    </section>
+
+    <!-- ============================================================ TRIGGER 2 -->
+    <section class="card" id="trigger">
+        <h2>Trigger trg_pedido_conta_fechada</h2>
+        <p class="nota">BEFORE INSERT OR UPDATE em PEDIDO: se o atendimento está FECHADA, o trigger levanta uma exceção
+            e o item não entra. Escolha uma conta aberta e uma fechada e compare. O teste roda numa transação desfeita
+            no final (ROLLBACK), então nada é gravado. Na tela de cada atendimento o lançamento é real.</p>
+
+        <th:block th:if="${secao == 'trigger'}">
+            <th:block th:replace="~{fragments :: mensagens}"></th:block>
+        </th:block>
+
+        <form class="linha-form" method="post" th:action="@{/rotinas/testar-pedido}">
+            <div style="flex:2 1 260px">
+                <label for="atendimento">Atendimento</label>
+                <select id="atendimento" name="atendimento" required>
+                    <option th:each="c : ${contasTeste}" th:value="${c.valor}" th:text="${c.texto}"></option>
+                </select>
+            </div>
+            <div style="flex:2 1 220px">
+                <label for="produto">Produto</label>
+                <select id="produto" name="produto" required>
+                    <option th:each="p : ${produtos}" th:value="${p.valor}" th:text="${p.texto}"></option>
+                </select>
+            </div>
+            <div style="max-width:120px">
+                <label for="quantidade">Quantidade</label>
+                <input id="quantidade" name="quantidade" type="number" min="1" value="1">
+            </div>
+            <div class="botoes"><button class="btn primario" type="submit">Tentar INSERT em PEDIDO</button></div>
+        </form>
+
+        <details class="dados">
+            <summary>Código da função do trigger</summary>
+            <pre class="sql" style="margin-top:8px" th:text="${fontes['fn_trg_pedido_conta_fechada']}"></pre>
+        </details>
+    </section>
+</main>
+
+<script th:src="@{/js/vendor/chart.umd.min.js}"></script>
+<script th:src="@{/js/graficos.js}"></script>
+<script th:inline="javascript">
+    (function () {
+        var G = window.Graficos;
+        if (!G || !G.disponivel) return;
+        function campo(l, n) { return l.map(function (d) { return d[n]; }); }
+
+        var sit = /*[[${porSituacao}]]*/ [];
+        G.pizza('g-situacao', campo(sit, 'rotulo'), campo(sit, 'valor'), {
+            formato: function (v) { return G.inteiro(v) + ' conta(s)'; }
+        });
+
+        var preco = /*[[${precoMedio}]]*/ [];
+        G.barras('g-preco', campo(preco, 'rotulo'), [{ nome: 'Preço médio', valores: campo(preco, 'valor') }], {
+            formato: G.reais, formatoEixo: G.reaisCurto,
+            extra: function (i) { return [preco[i].produtos + ' produto(s)']; }
+        });
+
+        var eq = /*[[${equipes}]]*/ [];
+        G.barras('g-equipes', campo(eq, 'rotulo'), [{ nome: 'Supervisionados', valores: campo(eq, 'valor') }], {
+            horizontal: true,
+            formato: function (v) { return G.inteiro(v) + ' funcionário(s)'; },
+            formatoEixo: function (v) { return Number.isInteger(v) ? G.inteiro(v) : ''; }
+        });
+    })();
+</script>
+</body>
+</html>

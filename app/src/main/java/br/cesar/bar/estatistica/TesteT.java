@@ -38,51 +38,43 @@ public final class TesteT {
         return 1 - bt * fracaoContinua(b, a, 1 - x) / b;
     }
 
-    private static double fracaoContinua(double a, double b, double x) {
-        final int maxIter = 300;
-        final double eps = 1e-15;
-        final double minimo = 1e-300;
+    private static final int MAX_ITERACOES = 300;
+    private static final double EPS = 1e-15;
+    private static final double MINIMO = 1e-300;
 
+    private static double fracaoContinua(double a, double b, double x) {
+        return fracaoContinua(a, b, x, MAX_ITERACOES);
+    }
+
+    /** Fração contínua (método de Lentz). Visível no pacote para o teste exercitar o limite de iterações. */
+    static double fracaoContinua(double a, double b, double x, int maxIter) {
         double qab = a + b;
         double qap = a + 1;
         double qam = a - 1;
         double c = 1;
-        double d = 1 - qab * x / qap;
-        if (Math.abs(d) < minimo) {
-            d = minimo;
-        }
-        d = 1 / d;
+        double d = 1 / naoZero(1 - qab * x / qap);
         double h = d;
         for (int m = 1; m <= maxIter; m++) {
             int m2 = 2 * m;
             double aa = m * (b - m) * x / ((qam + m2) * (a + m2));
-            d = 1 + aa * d;
-            if (Math.abs(d) < minimo) {
-                d = minimo;
-            }
-            c = 1 + aa / c;
-            if (Math.abs(c) < minimo) {
-                c = minimo;
-            }
-            d = 1 / d;
+            d = 1 / naoZero(1 + aa * d);
+            c = naoZero(1 + aa / c);
             h *= d * c;
             aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
-            d = 1 + aa * d;
-            if (Math.abs(d) < minimo) {
-                d = minimo;
-            }
-            c = 1 + aa / c;
-            if (Math.abs(c) < minimo) {
-                c = minimo;
-            }
-            d = 1 / d;
+            d = 1 / naoZero(1 + aa * d);
+            c = naoZero(1 + aa / c);
             double delta = d * c;
             h *= delta;
-            if (Math.abs(delta - 1) < eps) {
+            if (Math.abs(delta - 1) < EPS) {
                 break;
             }
         }
         return h;
+    }
+
+    /** Evita divisão por zero na fração contínua trocando valores ~0 por um número minúsculo. */
+    static double naoZero(double v) {
+        return Math.abs(v) < MINIMO ? MINIMO : v;
     }
 
     /** ln Γ(x) pela aproximação de Lanczos. */

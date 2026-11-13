@@ -1,7 +1,9 @@
-Projeto BD - Bar | Etapa 03: Interface funcional com dashboard
+Projeto BD - Bar | Etapa 06: Interface funcional com dashboard (versão final)
 
 Repositório: https://github.com/guilhermetlmelo/ProjetoBD
 
-- Aplicação (Java + Spring Boot + JDBC, PostgreSQL): pasta app/
-- SQL das consultas: sql/consultas/consultas.sql
-- Como rodar: seção "Aplicação (Etapa 03)" do README.md
+- Código da aplicação (Java + Spring Boot + JDBC, PostgreSQL 16): pasta app/
+- Scripts do banco (tabelas, índices, visões, funções, procedimentos, triggers e carga): pasta sql/
+- README com o passo a passo para rodar e a seção "Etapa 06: versão final": README.md
+- Como rodar: .\scripts\rodar_tudo.ps1 e depois, na pasta app, .\mvnw.cmd spring-boot:run
+  (a aplicação abre em http://localhost:8080)

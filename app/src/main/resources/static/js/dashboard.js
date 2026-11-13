@@ -1,147 +1,153 @@
 // Gráficos do dashboard. Os dados chegam prontos em window.DADOS (ver dashboard.html),
-// cada item no formato { rotulo, valor, ... } vindo do DashboardRepository.
+// vindos do DashboardRepository já com os filtros aplicados.
 (function () {
     'use strict';
 
-    if (typeof Chart === 'undefined') {
-        document.querySelectorAll('.grafico').forEach(function (el) {
-            el.innerHTML = '<p class="nota">Não foi possível carregar a biblioteca de gráficos (sem internet?). '
-                + 'Os números continuam disponíveis nas tabelas.</p>';
-        });
-        return;
+    var G = window.Graficos;
+    var D = window.DADOS || {};
+    if (!G || !G.disponivel) return;
+
+    function campo(lista, nome) { return lista.map(function (d) { return d[nome]; }); }
+
+    // ---------------------------------------------------------------- evolução semanal
+    // A tendência é a reta de mínimos quadrados y = a + b·x, com x = 1, 2, 3... (uma por semana).
+    function tendencia(valores) {
+        var n = valores.length;
+        if (n < 2) return null;
+        var sx = 0, sy = 0, sxy = 0, sxx = 0;
+        valores.forEach(function (y, i) { var x = i + 1; sx += x; sy += y; sxy += x * y; sxx += x * x; });
+        var b = (n * sxy - sx * sy) / (n * sxx - sx * sx);
+        var a = (sy - b * sx) / n;
+        return { a: a, b: b, pontos: valores.map(function (y, i) { return a + b * (i + 1); }) };
     }
 
-    var css = getComputedStyle(document.documentElement);
-    function token(nome) { return css.getPropertyValue(nome).trim(); }
-
-    var cor = {
-        serie: token('--series-1'),
-        texto: token('--text-2'),
-        muted: token('--muted'),
-        grade: token('--grid'),
-        eixo: token('--axis'),
-        superficie: token('--surface')
+    var metricas = {
+        faturamento: { nome: 'Faturamento', formato: G.reais, eixo: G.reaisCurto, unidade: function (b) { return G.reais(Math.abs(b)) + ' por semana'; } },
+        atendimentos: { nome: 'Atendimentos', formato: G.inteiro, eixo: G.inteiro, unidade: function (b) { return G.decimal(Math.abs(b), 1) + ' atendimento(s) por semana'; } },
+        ticket: { nome: 'Ticket médio', formato: G.reais, eixo: G.reaisCurto, unidade: function (b) { return G.reais(Math.abs(b)) + ' por semana'; } }
     };
 
-    var reais = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-    var inteiro = new Intl.NumberFormat('pt-BR');
+    function desenharSemanal(chave) {
+        var m = metricas[chave];
+        var semanal = D.semanal || [];
+        var valores = campo(semanal, chave).map(Number);
+        var t = tendencia(valores);
+        var series = [{ nome: m.nome, valores: valores }];
+        if (t) series.push({ nome: 'Tendência linear', valores: t.pontos, tracejada: true, cor: G.cor.texto });
+        G.linhas('g-semanal', campo(semanal, 'rotulo').map(function (r) { return 'Sem. ' + r; }), series,
+            { formato: m.formato, formatoEixo: m.eixo });
 
-    Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", sans-serif';
-    Chart.defaults.color = cor.texto;
-    Chart.defaults.plugins.legend.display = false; // uma série por gráfico: o título já a nomeia
-    Chart.defaults.plugins.tooltip.displayColors = false;
-    Chart.defaults.maintainAspectRatio = false;
-
-    function eixos(horizontal, formatoValor) {
-        var valor = {
-            beginAtZero: true,
-            grid: { color: cor.grade },
-            border: { display: false },
-            ticks: { color: cor.muted, maxRotation: 0, callback: function (v) { return formatoValor(v); } }
-        };
-        var categoria = {
-            grid: { display: false },
-            border: { color: cor.eixo },
-            ticks: { color: cor.texto, autoSkip: false }
-        };
-        return horizontal ? { x: valor, y: categoria } : { x: categoria, y: valor };
+        var nota = document.getElementById('nota-semanal');
+        if (nota && t) {
+            nota.textContent = 'Cada ponto é uma semana (segunda a domingo, rótulo = segunda-feira). '
+                + 'Tendência linear por mínimos quadrados: ' + (t.b >= 0 ? 'alta' : 'queda') + ' de '
+                + m.unidade(t.b) + '.';
+        }
     }
 
-    function compactoReais(v) {
-        return 'R$ ' + inteiro.format(v);
-    }
-
-    /** Barras de uma série só. opcoes: horizontal, formato, tooltipExtra, colado (histograma). */
-    function barras(id, dados, opcoes) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        var formato = opcoes.formato || function (v) { return inteiro.format(v); };
-        new Chart(el, {
-            type: 'bar',
-            data: {
-                labels: dados.map(function (d) { return d.rotulo; }),
-                datasets: [{
-                    data: dados.map(function (d) { return Number(d.valor); }),
-                    backgroundColor: cor.serie,
-                    borderColor: cor.superficie,
-                    borderWidth: opcoes.colado ? { left: 1, right: 1 } : 0,
-                    borderRadius: 4,          // só na ponta: o lado da base fica reto (borderSkipped)
-                    borderSkipped: 'start',
-                    barPercentage: opcoes.colado ? 1 : 0.7,
-                    categoryPercentage: opcoes.colado ? 1 : 0.8,
-                    maxBarThickness: opcoes.colado ? undefined : 48
-                }]
-            },
-            options: {
-                indexAxis: opcoes.horizontal ? 'y' : 'x',
-                scales: eixos(opcoes.horizontal, opcoes.formatoEixo || formato),
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function (ctx) {
-                                var linhas = [formato(ctx.raw)];
-                                if (opcoes.tooltipExtra) linhas = linhas.concat(opcoes.tooltipExtra(dados[ctx.dataIndex]));
-                                return linhas;
-                            }
-                        }
-                    }
-                }
-            }
+    document.querySelectorAll('.seletor button').forEach(function (botao) {
+        botao.addEventListener('click', function () {
+            document.querySelectorAll('.seletor button').forEach(function (b) { b.classList.remove('ativo'); });
+            botao.classList.add('ativo');
+            desenharSemanal(botao.dataset.metrica);
         });
-    }
+    });
+    desenharSemanal('faturamento');
 
-    function linha(id, dados, formato) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        new Chart(el, {
-            type: 'line',
-            data: {
-                labels: dados.map(function (d) { return d.rotulo; }),
-                datasets: [{
-                    data: dados.map(function (d) { return Number(d.valor); }),
-                    borderColor: cor.serie,
-                    backgroundColor: cor.serie,
-                    borderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    pointBorderColor: cor.superficie,
-                    pointBorderWidth: 2,
-                    tension: 0
-                }]
-            },
-            options: {
-                scales: eixos(false, compactoReais),
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    tooltip: { callbacks: { label: function (ctx) { return formato(ctx.raw); } } }
-                }
-            }
-        });
-    }
+    // ---------------------------------------------------------------- histograma
+    var hist = D.histograma || [];
+    G.barras('g-histograma', campo(hist, 'rotulo'), [{ nome: 'Atendimentos', valores: campo(hist, 'valor') }], {
+        colado: true,
+        formato: function (v) { return G.inteiro(v) + ' atendimento(s)'; },
+        formatoEixo: function (v) { return Number.isInteger(v) ? G.inteiro(v) : ''; },
+        extra: function (i) {
+            return [G.decimal(hist[i].relativa, 1) + '% do total', 'acumulado: ' + hist[i].acumulada];
+        }
+    });
 
-    /** Dispersão (um ponto por atendimento) + reta de regressão y = a + b·x calculada no SQL. */
-    function dispersao(id, pontos, resumo) {
-        var el = document.getElementById(id);
-        if (!el || !pontos.length) return;
-        var a = Number(resumo.intercepto), b = Number(resumo.inclinacao);
-        var x0 = Number(resumo.x_min), x1 = Number(resumo.x_max);
-        new Chart(el, {
+    // ---------------------------------------------------------------- composição
+    var cat = D.porCategoria || [];
+    G.pizza('g-categoria', campo(cat, 'rotulo'), campo(cat, 'valor'), { formato: G.reais });
+
+    var met = D.porMetodo || [];
+    G.pizza('g-metodo', campo(met, 'rotulo'), campo(met, 'valor'), { formato: G.reais, rosca: false });
+
+    // ---------------------------------------------------------------- dia da semana
+    var sem = D.porDiaSemana || [];
+    G.barras('g-semana', campo(sem, 'rotulo'), [
+        { nome: 'Média', valores: campo(sem, 'media') },
+        { nome: 'Mediana', valores: campo(sem, 'mediana') }
+    ], {
+        formato: G.reais,
+        formatoEixo: G.reaisCurto
+    });
+    // tooltip extra com o movimento do dia (fora da série para não repetir em cada barra)
+    (function () {
+        var grafico = Chart.getChart('g-semana');
+        if (!grafico) return;
+        grafico.options.plugins.tooltip.callbacks.footer = function (itens) {
+            var d = sem[itens[0].dataIndex];
+            return d.atendimentos + ' atendimento(s), ' + G.decimal(d.por_noite, 1) + ' por noite';
+        };
+        grafico.update();
+    })();
+
+    // ---------------------------------------------------------------- radar
+    var ca = D.categoriaArea || [];
+    var categorias = [];
+    var areas = [];
+    ca.forEach(function (d) {
+        if (categorias.indexOf(d.categoria) < 0) categorias.push(d.categoria);
+        if (areas.indexOf(d.area) < 0) areas.push(d.area);
+    });
+    categorias.sort();
+    G.radar('g-radar', categorias, areas.map(function (area) {
+        return {
+            nome: area,
+            valores: categorias.map(function (c) {
+                var linha = ca.find(function (d) { return d.area === area && d.categoria === c; });
+                return linha ? linha.pct : 0;
+            })
+        };
+    }), { formato: function (v) { return G.decimal(v, 0) + '%'; } });
+
+    // ---------------------------------------------------------------- produtos e horário
+    var top = D.topProdutos || [];
+    G.barras('g-produtos', campo(top, 'rotulo'), [{ nome: 'Itens', valores: campo(top, 'valor') }], {
+        horizontal: true,
+        formato: function (v) { return G.inteiro(v) + ' itens'; },
+        formatoEixo: G.inteiro,
+        extra: function (i) { return [G.reais(top[i].faturamento) + ' faturados']; }
+    });
+
+    var hora = D.porHora || [];
+    G.barras('g-hora', campo(hora, 'rotulo'), [{ nome: 'Itens', valores: campo(hora, 'valor') }], {
+        formato: function (v) { return G.inteiro(v) + ' itens'; },
+        formatoEixo: G.inteiro
+    });
+
+    // ---------------------------------------------------------------- dispersão (Pearson)
+    var pontos = D.pearsonPontos || [];
+    var r = D.pearson || {};
+    if (pontos.length && r.inclinacao !== null && document.getElementById('g-pearson')) {
+        var a = Number(r.intercepto), b = Number(r.inclinacao);
+        var x0 = Number(r.x_min), x1 = Number(r.x_max);
+        G.desenhar('g-pearson', {
             type: 'scatter',
             data: {
                 datasets: [{
                     label: 'Atendimentos',
                     data: pontos.map(function (p) { return { x: Number(p.x), y: Number(p.y), id: p.id }; }),
-                    backgroundColor: cor.serie,
-                    borderColor: cor.superficie,
-                    borderWidth: 2,
-                    pointRadius: 5,
+                    backgroundColor: G.series[0],
+                    borderColor: G.cor.superficie,
+                    borderWidth: 1,
+                    pointRadius: 4,
                     pointHoverRadius: 7
                 }, {
                     type: 'line',
                     label: 'Reta de regressão',
                     data: [{ x: x0, y: a + b * x0 }, { x: x1, y: a + b * x1 }],
-                    borderColor: cor.texto,
+                    borderColor: G.cor.texto,
                     borderWidth: 2,
                     borderDash: [6, 4],
                     pointStyle: 'line',
@@ -153,33 +159,31 @@
                 scales: {
                     x: {
                         type: 'linear',
-                        title: { display: true, text: 'Tempo de permanência (minutos)', color: cor.texto },
-                        grid: { color: cor.grade },
-                        border: { color: cor.eixo },
-                        ticks: { color: cor.muted }
+                        title: { display: true, text: 'Tempo de permanência (minutos)', color: G.cor.texto },
+                        grid: { color: G.cor.grade },
+                        border: { color: G.cor.eixo },
+                        ticks: { color: G.cor.muted }
                     },
                     y: {
                         beginAtZero: true,
-                        title: { display: true, text: 'Valor gasto (R$)', color: cor.texto },
-                        grid: { color: cor.grade },
+                        title: { display: true, text: 'Valor gasto (R$)', color: G.cor.texto },
+                        grid: { color: G.cor.grade },
                         border: { display: false },
-                        ticks: { color: cor.muted, callback: function (v) { return compactoReais(v); } }
+                        ticks: { color: G.cor.muted, callback: G.reaisCurto }
                     }
                 },
                 interaction: { mode: 'nearest', intersect: true },
                 plugins: {
                     legend: {
-                        display: true,
-                        position: 'top',
-                        align: 'start',
-                        labels: { color: cor.texto, usePointStyle: true, boxWidth: 8, boxHeight: 8 }
+                        display: true, position: 'top', align: 'start',
+                        labels: { color: G.cor.texto, usePointStyle: true, boxWidth: 8, boxHeight: 8 }
                     },
                     tooltip: {
                         filter: function (item) { return item.datasetIndex === 0; },
                         callbacks: {
                             title: function (itens) { return 'Atendimento ' + itens[0].raw.id; },
                             label: function (ctx) {
-                                return [inteiro.format(ctx.raw.x) + ' min', reais.format(ctx.raw.y)];
+                                return [G.inteiro(ctx.raw.x) + ' min', G.reais(ctx.raw.y)];
                             }
                         }
                     }
@@ -187,44 +191,4 @@
             }
         });
     }
-
-    var D = window.DADOS || {};
-    var formatoReais = function (v) { return reais.format(v); };
-
-    barras('g-histograma', D.histograma || [], {
-        colado: true,
-        formato: function (v) { return inteiro.format(v) + ' atendimento(s)'; },
-        formatoEixo: function (v) { return Number.isInteger(v) ? inteiro.format(v) : ''; },
-        tooltipExtra: function (d) { return [d.relativa + '% do total', 'acumulado: ' + d.acumulada]; }
-    });
-
-    dispersao('g-pearson', D.pearsonPontos || [], D.pearson || {});
-
-    linha('g-dia', D.porDia || [], formatoReais);
-
-    barras('g-hora', D.porHora || [], {
-        formato: function (v) { return inteiro.format(v) + ' itens'; },
-        formatoEixo: function (v) { return inteiro.format(v); }
-    });
-
-    barras('g-categoria', D.porCategoria || [], {
-        horizontal: true, formato: formatoReais, formatoEixo: compactoReais
-    });
-
-    barras('g-produtos', D.topProdutos || [], {
-        horizontal: true,
-        formato: function (v) { return inteiro.format(v) + ' itens'; },
-        formatoEixo: function (v) { return inteiro.format(v); }
-    });
-
-    barras('g-metodo', D.porMetodo || [], {
-        horizontal: true, formato: formatoReais, formatoEixo: compactoReais,
-        tooltipExtra: function (d) { return [d.quantidade + ' transação(ões)']; }
-    });
-
-    barras('g-local', D.porLocalizacao || [], {
-        horizontal: true,
-        formato: function (v) { return inteiro.format(v) + ' atendimento(s)'; },
-        formatoEixo: function (v) { return Number.isInteger(v) ? inteiro.format(v) : ''; }
-    });
 })();

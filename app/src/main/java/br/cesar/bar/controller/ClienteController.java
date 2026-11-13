@@ -76,6 +76,6 @@ public class ClienteController {
     }
 
     private static String vazioParaNulo(String valor) {
-        return valor == null || valor.isBlank() ? null : valor.trim();
+        return valor.isBlank() ? null : valor.trim();
     }
 }

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Atendimento ' + ${a.id})}"></head>
+<body>
+<header th:replace="~{fragments :: topo}"></header>
+<main>
+    <p class="nota"><a th:href="@{/atendimentos}">Voltar para atendimentos</a></p>
+    <h1 th:text="'Atendimento ' + ${a.id}"></h1>
+    <p class="sub" th:text="${a.cliente} + ' · mesa ' + ${a.mesa} + ' (' + ${a.localizacao} + ') · aberto em ' + ${@fmt.data(a.abertura)}"></p>
+
+    <th:block th:replace="~{fragments :: mensagens}"></th:block>
+
+    <section class="kpis">
+        <div class="kpi">
+            <div class="rotulo">Status</div>
+            <div class="valor" th:text="${a.status}"></div>
+        </div>
+        <div class="kpi">
+            <div class="rotulo">Consumido</div>
+            <div class="valor" th:text="${@fmt.reais(a.consumido)}"></div>
+            <div class="extra" th:text="'fn_valor_conta(' + ${a.id} + ')'"></div>
+        </div>
+        <div class="kpi">
+            <div class="rotulo">Pago</div>
+            <div class="valor" th:text="${@fmt.reais(a.pago)}"></div>
+            <div class="extra" th:text="${pagamentos.size()} + ' pagamento(s) parcial(is)'"></div>
+        </div>
+        <div class="kpi">
+            <div class="rotulo">Saldo</div>
+            <div class="valor" th:text="${@fmt.reais(a.saldo())}"></div>
+        </div>
+        <div class="kpi">
+            <div class="rotulo">Situação</div>
+            <div class="valor"><span class="selo" th:text="${a.situacao}"
+                 th:classappend="${a.situacao == 'QUITADA'} ? 'ok' : (${a.situacao == 'PARCIAL' or a.situacao == 'EM ABERTO'} ? 'alerta-selo' : '')"></span></div>
+            <div class="extra" th:text="'fn_situacao_conta(' + ${a.id} + ')'"></div>
+        </div>
+    </section>
+
+    <div class="alerta aviso" th:if="${a.status == 'FECHADA'}">
+        Conta fechada. O trigger <code>trg_pedido_conta_fechada</code> recusa INSERT e UPDATE em PEDIDO
+        desta conta: tente lançar um item abaixo para ver o bloqueio. Para corrigir a conta, reabra-a.
+    </div>
+
+    <section class="card" id="itens">
+        <h2>Itens do pedido (PEDIDO)</h2>
+        <form class="linha-form" th:action="@{/atendimentos/{id}/itens(id=${a.id})}" method="post">
+            <div style="max-width:120px">
+                <label for="idPedido">Pedido nº</label>
+                <input id="idPedido" name="idPedido" type="number" min="1" required th:value="${proximoPedido}">
+            </div>
+            <div style="flex:3 1 260px">
+                <label for="produto">Produto</label>
+                <select id="produto" name="produto" required>
+                    <option value="">Escolha...</option>
+                    <option th:each="o : ${produtos}" th:value="${o.valor}" th:text="${o.texto}"></option>
+                </select>
+            </div>
+            <div style="max-width:120px">
+                <label for="quantidade">Quantidade</label>
+                <input id="quantidade" name="quantidade" type="number" min="1" value="1" required>
+            </div>
+            <div class="botoes">
+                <button class="btn primario" type="submit">Lançar item</button>
+            </div>
+        </form>
+        <p class="nota" style="margin-top:8px">Mesmo nº de pedido = mesma rodada. Um número novo abre outra rodada.</p>
+
+        <div class="tabela-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th class="num">Pedido</th>
+                    <th>Horário</th>
+                    <th>Produto</th>
+                    <th>Categoria</th>
+                    <th class="num">Preço (R$)</th>
+                    <th class="num">Quantidade</th>
+                    <th class="num">Valor (R$)</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="i : ${itens}">
+                    <td class="num" th:text="${i.idPedido}"></td>
+                    <td th:text="${@fmt.data(i.dataHora)}"></td>
+                    <td th:text="${i.produto}"></td>
+                    <td th:text="${i.categoria}"></td>
+                    <td class="num" th:text="${@fmt.num(i.precoUnitario, 2)}"></td>
+                    <td class="num">
+                        <form class="linha-form" style="justify-content:flex-end;flex-wrap:nowrap"
+                              th:action="@{/atendimentos/{id}/itens/{p}/{c}/quantidade(id=${a.id},p=${i.idPedido},c=${i.codigoProd})}"
+                              method="post">
+                            <input name="quantidade" type="number" min="1" th:value="${i.quantidade}"
+                                   style="width:72px" aria-label="Quantidade">
+                            <button class="btn pequeno" type="submit">Alterar</button>
+                        </form>
+                    </td>
+                    <td class="num" th:text="${@fmt.num(i.valor, 2)}"></td>
+                    <td class="acoes">
+                        <form th:if="${a.status == 'ABERTA'}"
+                              th:action="@{/atendimentos/{id}/itens/{p}/{c}/excluir(id=${a.id},p=${i.idPedido},c=${i.codigoProd})}"
+                              method="post" onsubmit="return confirm('Remover este item?');">
+                            <button class="btn pequeno perigo" type="submit">Remover</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${itens.isEmpty()}"><td colspan="8">Nenhum item lançado.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="card" id="pagamentos">
+        <h2>Pagamentos parciais (PAGAMENTO_PARCIAL)</h2>
+        <form class="linha-form" th:if="${a.status == 'ABERTA'}"
+              th:action="@{/atendimentos/{id}/pagamentos(id=${a.id})}" method="post">
+            <div>
+                <label for="valor">Valor (R$)</label>
+                <input id="valor" name="valor" type="number" min="0.01" step="0.01" required
+                       th:value="${a.saldo().signum() > 0} ? ${a.saldo()} : ''">
+            </div>
+            <div>
+                <label for="metodo">Forma de pagamento</label>
+                <select id="metodo" name="metodo" required>
+                    <option th:each="m : ${metodos}" th:value="${m}" th:text="${m}"></option>
+                </select>
+            </div>
+            <div class="botoes">
+                <button class="btn primario" type="submit">Registrar pagamento</button>
+            </div>
+        </form>
+        <p class="nota" th:if="${a.status == 'FECHADA'}">Conta fechada: pagamentos e itens só podem ser
+            removidos depois de reabrir a conta.</p>
+        <div class="tabela-wrap" style="margin-top:16px">
+            <table>
+                <thead>
+                <tr>
+                    <th class="num">Transação</th>
+                    <th>Horário</th>
+                    <th>Forma</th>
+                    <th class="num">Valor (R$)</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="p : ${pagamentos}">
+                    <td class="num" th:text="${p.numTransacao}"></td>
+                    <td th:text="${@fmt.data(p.horario)}"></td>
+                    <td th:text="${p.metodo}"></td>
+                    <td class="num" th:text="${@fmt.num(p.valor, 2)}"></td>
+                    <td class="acoes">
+                        <form th:if="${a.status == 'ABERTA'}"
+                              th:action="@{/atendimentos/{id}/pagamentos/{n}/excluir(id=${a.id},n=${p.numTransacao})}"
+                              method="post" onsubmit="return confirm('Remover este pagamento?');">
+                            <button class="btn pequeno perigo" type="submit">Remover</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${pagamentos.isEmpty()}"><td colspan="5">Nenhum pagamento registrado.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>Conta</h2>
+        <form th:action="@{/atendimentos/{id}/salvar(id=${a.id})}" method="post">
+            <div class="form-grade">
+                <div>
+                    <label for="abertura">Abertura</label>
+                    <input id="abertura" name="abertura" type="datetime-local" required th:value="${a.abertura}">
+                </div>
+                <div>
+                    <label for="cliente">Cliente</label>
+                    <select id="cliente" name="cliente" required>
+                        <option th:each="o : ${clientes}" th:value="${o.valor}" th:text="${o.texto}"
+                                th:selected="${o.valor == a.cpfCliente}"></option>
+                    </select>
+                </div>
+                <div>
+                    <label for="garcom">Atendente</label>
+                    <select id="garcom" name="garcom" required>
+                        <option th:each="o : ${garcons}" th:value="${o.valor}" th:text="${o.texto}"
+                                th:selected="${o.valor == a.cpfGarcom}"></option>
+                    </select>
+                </div>
+                <div>
+                    <label for="mesa">Mesa</label>
+                    <select id="mesa" name="mesa" required>
+                        <option th:each="o : ${mesas}" th:value="${o.valor}" th:text="${o.texto}"
+                                th:selected="${o.valor == '' + a.mesa}"></option>
+                    </select>
+                </div>
+            </div>
+            <div class="botoes">
+                <button class="btn" type="submit">Salvar dados da conta</button>
+            </div>
+        </form>
+
+        <div class="botoes" style="border-top:1px solid var(--grid);padding-top:16px">
+            <form th:if="${a.status == 'ABERTA'}" th:action="@{/atendimentos/{id}/fechar(id=${a.id})}" method="post">
+                <button class="btn primario" type="submit">Fechar conta</button>
+            </form>
+            <form th:if="${a.status == 'FECHADA'}" th:action="@{/atendimentos/{id}/reabrir(id=${a.id})}" method="post">
+                <button class="btn" type="submit">Reabrir conta</button>
+            </form>
+            <form th:action="@{/atendimentos/{id}/excluir(id=${a.id})}" method="post"
+                  onsubmit="return confirm('Excluir o atendimento com todos os pedidos e pagamentos?');">
+                <button class="btn perigo" type="submit">Excluir atendimento</button>
+            </form>
+        </div>
+        <p class="nota" style="margin-top:8px">Fechar só é permitido quando fn_situacao_conta indica QUITADA,
+            PAGO A MAIS ou SEM CONSUMO.</p>
+    </section>
+</main>
+</body>
+</html>

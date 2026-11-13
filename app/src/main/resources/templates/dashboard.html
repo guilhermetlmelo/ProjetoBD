@@ -5,33 +5,110 @@
 <header th:replace="~{fragments :: topo}"></header>
 <main>
     <h1>Dashboard</h1>
-    <p class="sub">Indicadores e gráficos estatísticos gerados a partir do banco, a cada carregamento da página.
-        O valor de um item é quantidade × preço atual do produto.</p>
+    <p class="sub">Indicadores e gráficos calculados no PostgreSQL a cada carregamento, a partir da visão
+        <code>vw_itens_vendidos</code>. O valor de um item é quantidade x preço atual do produto.</p>
 
-    <section class="kpis">
+    <form class="filtros" method="get" th:action="@{/}">
+        <div>
+            <label for="inicio">De</label>
+            <input id="inicio" name="inicio" type="date" th:value="${filtro.inicio}"
+                   th:min="${periodo.inicio}" th:max="${periodo.fim}">
+        </div>
+        <div>
+            <label for="fim">Até</label>
+            <input id="fim" name="fim" type="date" th:value="${filtro.fim}"
+                   th:min="${periodo.inicio}" th:max="${periodo.fim}">
+        </div>
+        <div>
+            <label for="categoria">Categoria</label>
+            <select id="categoria" name="categoria">
+                <option value="">Todas</option>
+                <option th:each="c : ${categorias}" th:value="${c}" th:text="${c}"
+                        th:selected="${c == filtro.categoria}"></option>
+            </select>
+        </div>
+        <div>
+            <label for="area">Área do bar</label>
+            <select id="area" name="area">
+                <option value="">Todas</option>
+                <option th:each="a : ${areas}" th:value="${a}" th:text="${a}"
+                        th:selected="${a == filtro.area}"></option>
+            </select>
+        </div>
+        <div class="botoes">
+            <button class="btn primario" type="submit">Aplicar</button>
+            <a class="btn" th:href="@{/}">Limpar</a>
+        </div>
+        <div class="resumo">
+            <span th:text="'Período: ' + ${@fmt.data(filtro.inicio)} + ' a ' + ${@fmt.data(filtro.fim)}
+                           + ' · ' + ${ind.noites} + ' noite(s) com movimento'"></span>
+            <span th:if="${filtro.categoria != null and !filtro.categoria.isEmpty()}"
+                  th:text="' · só itens de ' + ${filtro.categoria}"></span>
+            <span th:if="${filtro.area != null and !filtro.area.isEmpty()}"
+                  th:text="' · só mesas de ' + ${filtro.area}"></span>
+        </div>
+    </form>
+
+    <div class="alerta aviso" th:if="${ind.atendimentos == 0}">Nenhum atendimento com esses filtros.</div>
+
+    <section class="kpis quatro">
         <div class="kpi">
-            <div class="rotulo">Faturamento total</div>
-            <div class="valor" th:text="'R$ ' + ${#numbers.formatDecimal(ind.faturamento, 1, 'POINT', 2, 'COMMA')}"></div>
+            <div class="rotulo">Faturamento</div>
+            <div class="valor" th:text="${@fmt.reais(ind.faturamento)}"></div>
+            <div class="extra" th:text="${@fmt.reais(ind.media_noite)} + ' por noite, em média'"></div>
         </div>
         <div class="kpi">
             <div class="rotulo">Atendimentos</div>
-            <div class="valor" th:text="${ind.atendimentos}"></div>
+            <div class="valor" th:text="${@fmt.num(ind.atendimentos, 0)}"></div>
             <div class="extra" th:text="${ind.abertos} + ' com conta aberta'"></div>
         </div>
         <div class="kpi">
             <div class="rotulo">Ticket médio</div>
-            <div class="valor" th:text="${ind.ticket_medio == null} ? '—' : 'R$ ' + ${#numbers.formatDecimal(ind.ticket_medio, 1, 'POINT', 2, 'COMMA')}"></div>
-            <div class="extra">consumo médio por atendimento</div>
+            <div class="valor" th:text="${@fmt.reais(ind.ticket_medio)}"></div>
+            <div class="extra" th:text="${@fmt.num(ind.itens_por_conta, 1)} + ' itens por conta'"></div>
         </div>
         <div class="kpi">
             <div class="rotulo">Itens vendidos</div>
-            <div class="valor" th:text="${ind.itens}"></div>
+            <div class="valor" th:text="${@fmt.num(ind.itens, 0)}"></div>
+            <div class="extra" th:text="'Mais vendido: ' + ${ind.produto_top ?: '-'}"></div>
         </div>
         <div class="kpi">
-            <div class="rotulo">Clientes</div>
+            <div class="rotulo">Clientes atendidos</div>
             <div class="valor" th:text="${ind.clientes}"></div>
-            <div class="extra" th:text="${ind.fieis} + ' com fidelidade ativa'"></div>
+            <div class="extra" th:text="${@fmt.pct(ind.pct_fieis)} + ' com fidelidade ativa'"></div>
         </div>
+        <div class="kpi">
+            <div class="rotulo">Tendência semanal</div>
+            <div class="valor" th:text="${@fmt.variacao(tendencia.variacao_pct)}"></div>
+            <div class="extra tendencia" th:if="${tendencia.inclinacao != null}"
+                 th:classappend="${tendencia.inclinacao >= 0} ? 'sobe' : 'desce'"
+                 th:text="(${tendencia.inclinacao >= 0} ? 'Alta de ' : 'Queda de ') + ${@fmt.reais(tendencia.inclinacao >= 0 ? tendencia.inclinacao : -tendencia.inclinacao)} + ' por semana'"></div>
+            <div class="extra">última semana x anterior</div>
+        </div>
+        <div class="kpi">
+            <div class="rotulo">Contas quitadas</div>
+            <div class="valor" th:text="${@fmt.pct(ind.pct_quitadas)}"></div>
+            <div class="extra">das fechadas, via fn_situacao_conta</div>
+        </div>
+        <div class="kpi">
+            <div class="rotulo">Categoria líder</div>
+            <div class="valor" th:text="${ind.categoria_top ?: '-'}"></div>
+            <div class="extra">maior faturamento no filtro</div>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-titulo">
+            <h2>Evolução semanal</h2>
+            <div class="seletor" role="group" aria-label="Métrica do gráfico semanal">
+                <button type="button" class="ativo" data-metrica="faturamento">Faturamento</button>
+                <button type="button" data-metrica="atendimentos">Atendimentos</button>
+                <button type="button" data-metrica="ticket">Ticket médio</button>
+            </div>
+        </div>
+        <p class="nota" id="nota-semanal">Cada ponto é uma semana (segunda a domingo). A linha tracejada é a
+            tendência linear por mínimos quadrados.</p>
+        <div class="grafico"><canvas id="g-semanal" role="img" aria-label="Evolução semanal com linha de tendência"></canvas></div>
     </section>
 
     <section class="card">
@@ -41,15 +118,21 @@
         <p class="nota" th:text="'Contas fechadas (n = ' + ${estat.n} + '). Histograma com faixas de R$ ' + ${larguraFaixa} + '.'"></p>
 
         <dl class="estat">
-            <div><dt>Média</dt><dd th:text="'R$ ' + ${#numbers.formatDecimal(estat.media, 1, 'POINT', 2, 'COMMA')}"></dd></div>
-            <div><dt>Mediana</dt><dd th:text="'R$ ' + ${#numbers.formatDecimal(estat.mediana, 1, 'POINT', 2, 'COMMA')}"></dd></div>
-            <div><dt>Desvio padrão</dt><dd th:text="'R$ ' + ${#numbers.formatDecimal(estat.desvio_padrao, 1, 'POINT', 2, 'COMMA')}"></dd></div>
-            <div><dt>Coef. de variação</dt><dd th:text="${#numbers.formatDecimal(estat.coef_variacao, 1, 'POINT', 1, 'COMMA')} + '%'"></dd></div>
-            <div><dt>Mínimo</dt><dd th:text="'R$ ' + ${#numbers.formatDecimal(estat.minimo, 1, 'POINT', 2, 'COMMA')}"></dd></div>
-            <div><dt>1º quartil</dt><dd th:text="'R$ ' + ${#numbers.formatDecimal(estat.q1, 1, 'POINT', 2, 'COMMA')}"></dd></div>
-            <div><dt>3º quartil</dt><dd th:text="'R$ ' + ${#numbers.formatDecimal(estat.q3, 1, 'POINT', 2, 'COMMA')}"></dd></div>
-            <div><dt>Máximo</dt><dd th:text="'R$ ' + ${#numbers.formatDecimal(estat.maximo, 1, 'POINT', 2, 'COMMA')}"></dd></div>
+            <div><dt>Média</dt><dd th:text="${@fmt.reais(estat.media)}"></dd></div>
+            <div><dt>Mediana</dt><dd th:text="${@fmt.reais(estat.mediana)}"></dd></div>
+            <div><dt>Moda</dt><dd th:text="${@fmt.reais(estat.moda)} + ' (' + ${estat.moda_freq} + 'x)'"></dd></div>
+            <div><dt>Classe modal</dt><dd th:text="${classeModal}"></dd></div>
+            <div><dt>Variância</dt><dd th:text="${@fmt.num(estat.variancia, 2)}"></dd></div>
+            <div><dt>Desvio padrão</dt><dd th:text="${@fmt.reais(estat.desvio_padrao)}"></dd></div>
+            <div><dt>Coef. de variação</dt><dd th:text="${@fmt.pct(estat.coef_variacao)}"></dd></div>
+            <div><dt>Assimetria (Pearson)</dt><dd th:text="${@fmt.num(estat.assimetria, 2)}"></dd></div>
+            <div><dt>Mínimo</dt><dd th:text="${@fmt.reais(estat.minimo)}"></dd></div>
+            <div><dt>1º quartil</dt><dd th:text="${@fmt.reais(estat.q1)}"></dd></div>
+            <div><dt>3º quartil</dt><dd th:text="${@fmt.reais(estat.q3)}"></dd></div>
+            <div><dt>Máximo</dt><dd th:text="${@fmt.reais(estat.maximo)}"></dd></div>
         </dl>
+        <p class="nota">Variância em R$². Assimetria = 3 x (média - mediana) / desvio padrão: positiva quando
+            poucas contas altas puxam a média para cima.</p>
 
         <div class="grade">
             <div>
@@ -71,7 +154,7 @@
                         <tr th:each="f : ${distribuicao}">
                             <td th:text="${f.rotulo}"></td>
                             <td class="num" th:text="${f.valor}"></td>
-                            <td class="num" th:text="${f.relativa}"></td>
+                            <td class="num" th:text="${@fmt.num(f.relativa, 1)}"></td>
                             <td class="num" th:text="${f.acumulada}"></td>
                         </tr>
                         </tbody>
@@ -81,95 +164,96 @@
         </div>
     </section>
 
+    <div class="grade">
+        <section class="card">
+            <h2>Faturamento por categoria</h2>
+            <p class="nota">Participação de cada categoria do cardápio na receita (R$).</p>
+            <div class="grafico"><canvas id="g-categoria" role="img" aria-label="Faturamento por categoria"></canvas></div>
+        </section>
+        <section class="card">
+            <h2>Valor recebido por forma de pagamento</h2>
+            <p class="nota">Soma dos pagamentos parciais das contas do filtro.</p>
+            <div class="grafico"><canvas id="g-metodo" role="img" aria-label="Valor por forma de pagamento"></canvas></div>
+        </section>
+    </div>
+
+    <div class="grade">
+        <section class="card">
+            <h2>Ticket por dia da semana: média x mediana</h2>
+            <p class="nota">Quando a média fica bem acima da mediana, algumas contas altas puxam o valor.
+                Passe o mouse para ver atendimentos por noite.</p>
+            <div class="grafico alto"><canvas id="g-semana" role="img" aria-label="Média e mediana do ticket por dia da semana"></canvas></div>
+        </section>
+        <section class="card">
+            <h2>Perfil de consumo por área</h2>
+            <p class="nota">Percentual do faturamento de cada área que vem de cada categoria.</p>
+            <div class="grafico alto"><canvas id="g-radar" role="img" aria-label="Radar de categorias por área"></canvas></div>
+        </section>
+    </div>
+
+    <div class="grade">
+        <section class="card">
+            <h2>10 produtos mais vendidos</h2>
+            <p class="nota">Por quantidade de itens.</p>
+            <div class="grafico alto"><canvas id="g-produtos" role="img" aria-label="Produtos mais vendidos"></canvas></div>
+        </section>
+        <section class="card">
+            <h2>Itens pedidos por hora do dia</h2>
+            <p class="nota">Distribuição de frequência do horário dos pedidos: mostra o pico da noite.</p>
+            <div class="grafico alto"><canvas id="g-hora" role="img" aria-label="Itens pedidos por hora"></canvas></div>
+        </section>
+    </div>
+
     <section class="card">
-        <h2>Correlação de Pearson: tempo de permanência × valor gasto</h2>
+        <h2>Correlação de Pearson: tempo de permanência x valor gasto</h2>
         <p class="nota">Cada ponto é um atendimento fechado. Tempo = da abertura da conta até o último
             pagamento parcial. A reta é a regressão linear por mínimos quadrados.</p>
 
-        <div class="grade">
+        <div class="alerta aviso" th:unless="${pearsonOk}">Poucos atendimentos no filtro para calcular a correlação.</div>
+        <div class="grade" th:if="${pearsonOk}">
             <div>
                 <div class="grafico alto"><canvas id="g-pearson" role="img"
                         aria-label="Dispersão entre tempo de permanência e valor gasto, com reta de regressão"></canvas></div>
             </div>
             <div>
                 <dl class="estat estat-2">
-                    <div><dt>Coeficiente r</dt>
-                        <dd th:text="${#numbers.formatDecimal(pearson.r, 1, 'POINT', 3, 'COMMA')}"></dd></div>
+                    <div><dt>Coeficiente r</dt><dd th:text="${@fmt.num(pearson.r, 3)}"></dd></div>
                     <div><dt>Intensidade</dt><dd th:text="${pearson.intensidade}"></dd></div>
-                    <div><dt>r² (determinação)</dt>
-                        <dd th:text="${#numbers.formatDecimal(pearson.r2 * 100, 1, 'POINT', 1, 'COMMA')} + '%'"></dd></div>
+                    <div><dt>r² (determinação)</dt><dd th:text="${@fmt.pct(pearson.r2 * 100)}"></dd></div>
                     <div><dt>n (atendimentos)</dt><dd th:text="${pearson.n}"></dd></div>
                     <div><dt>Estatística t</dt>
-                        <dd th:text="${#numbers.formatDecimal(pearson.t, 1, 'POINT', 2, 'COMMA')} + ' (gl = ' + ${pearson.gl} + ')'"></dd></div>
+                        <dd th:text="${@fmt.num(pearson.t, 2)} + ' (gl = ' + ${pearson.gl} + ')'"></dd></div>
                     <div><dt>p-valor (bilateral)</dt>
-                        <dd th:text="${pValor < 0.001} ? '< 0,001' : ${#numbers.formatDecimal(pValor, 1, 'POINT', 3, 'COMMA')}"></dd></div>
+                        <dd th:text="${pValor < 0.001} ? '< 0,001' : ${@fmt.num(pValor, 3)}"></dd></div>
                     <div class="largo"><dt>Reta de regressão</dt>
-                        <dd th:text="'valor = ' + ${#numbers.formatDecimal(pearson.intercepto, 1, 'POINT', 2, 'COMMA')}
-                                     + ' + ' + ${#numbers.formatDecimal(pearson.inclinacao, 1, 'POINT', 4, 'COMMA')} + ' × minutos'"></dd></div>
+                        <dd th:text="'valor = ' + ${@fmt.num(pearson.intercepto, 2)} + ' + ' + ${@fmt.num(pearson.inclinacao, 4)} + ' x minutos'"></dd></div>
                 </dl>
                 <div class="alerta" th:classappend="${significativo} ? 'sucesso' : 'aviso'">
                     <strong th:text="${significativo} ? 'Significativa ao nível de 5%.' : 'Não significativa ao nível de 5%.'"></strong>
                     <span th:if="${significativo}"
-                          th:text="'Há correlação ' + ${pearson.intensidade} + ': quanto mais tempo o cliente fica, mais tende a gastar. Cada minuto a mais está associado, em média, a R$ '
-                                   + ${#numbers.formatDecimal(pearson.inclinacao, 1, 'POINT', 2, 'COMMA')} + ' a mais na conta. O tempo explica '
-                                   + ${#numbers.formatDecimal(pearson.r2 * 100, 1, 'POINT', 1, 'COMMA')} + '% da variação do valor.'"></span>
+                          th:text="'Correlação ' + ${pearson.intensidade} + ': quanto mais tempo o cliente fica, mais tende a gastar. Cada minuto a mais está associado, em média, a '
+                                   + ${@fmt.reais(pearson.inclinacao)} + ' na conta. O tempo explica '
+                                   + ${@fmt.pct(pearson.r2 * 100)} + ' da variação do valor.'"></span>
                     <span th:unless="${significativo}">Não há evidência de relação linear entre o tempo de permanência e o valor gasto.</span>
                 </div>
                 <p class="nota">H0: ρ = 0 (não há correlação). t = r·√(n−2) / √(1−r²). Correlação não implica causalidade.</p>
             </div>
         </div>
     </section>
-
-    <div class="grade">
-        <section class="card">
-            <h2>Faturamento por dia</h2>
-            <p class="nota">Consumo dos atendimentos iniciados em cada dia (R$).</p>
-            <div class="grafico"><canvas id="g-dia" role="img" aria-label="Faturamento por dia"></canvas></div>
-        </section>
-        <section class="card">
-            <h2>Itens pedidos por hora do dia</h2>
-            <p class="nota">Quantidade de itens por hora do pedido: mostra o horário de pico.</p>
-            <div class="grafico"><canvas id="g-hora" role="img" aria-label="Itens pedidos por hora"></canvas></div>
-        </section>
-    </div>
-
-    <div class="grade">
-        <section class="card">
-            <h2>Faturamento por categoria</h2>
-            <p class="nota">Receita de cada categoria do cardápio (R$).</p>
-            <div class="grafico"><canvas id="g-categoria" role="img" aria-label="Faturamento por categoria"></canvas></div>
-        </section>
-        <section class="card">
-            <h2>10 produtos mais vendidos</h2>
-            <p class="nota">Por quantidade de itens.</p>
-            <div class="grafico alto"><canvas id="g-produtos" role="img" aria-label="Produtos mais vendidos"></canvas></div>
-        </section>
-    </div>
-
-    <div class="grade">
-        <section class="card">
-            <h2>Valor recebido por forma de pagamento</h2>
-            <p class="nota">Soma dos pagamentos parciais (R$). Passe o mouse para ver a quantidade de transações.</p>
-            <div class="grafico"><canvas id="g-metodo" role="img" aria-label="Valor por forma de pagamento"></canvas></div>
-        </section>
-        <section class="card">
-            <h2>Atendimentos por área do bar</h2>
-            <p class="nota">Quantidade de atendimentos pela localização da mesa.</p>
-            <div class="grafico"><canvas id="g-local" role="img" aria-label="Atendimentos por localização"></canvas></div>
-        </section>
-    </div>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script th:src="@{/js/vendor/chart.umd.min.js}"></script>
+<script th:src="@{/js/graficos.js}"></script>
 <script th:inline="javascript">
     window.DADOS = {
+        semanal: /*[[${semanal}]]*/ [],
         histograma: /*[[${distribuicao}]]*/ [],
-        porDia: /*[[${porDia}]]*/ [],
-        porHora: /*[[${porHora}]]*/ [],
         porCategoria: /*[[${porCategoria}]]*/ [],
-        topProdutos: /*[[${topProdutos}]]*/ [],
         porMetodo: /*[[${porMetodo}]]*/ [],
-        porLocalizacao: /*[[${porLocalizacao}]]*/ [],
+        porDiaSemana: /*[[${porDiaSemana}]]*/ [],
+        categoriaArea: /*[[${categoriaArea}]]*/ [],
+        topProdutos: /*[[${topProdutos}]]*/ [],
+        porHora: /*[[${porHora}]]*/ [],
         pearsonPontos: /*[[${pearsonPontos}]]*/ [],
         pearson: /*[[${pearson}]]*/ {}
     };

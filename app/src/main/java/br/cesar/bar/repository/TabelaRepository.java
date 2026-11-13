@@ -36,6 +36,9 @@ public class TabelaRepository {
         SELECTS.put("PAGAMENTO_PARCIAL", """
                 SELECT ID_Atendimento, Num_Transacao, Valor_Pago, Metodo_Pagamento, Horario_Pagamento
                   FROM PAGAMENTO_PARCIAL ORDER BY ID_Atendimento, Num_Transacao""");
+        SELECTS.put("LOG_PRECO_PRODUTO", """
+                SELECT ID_Log, Codigo_Prod, Preco_Antigo, Preco_Novo, Data_Alteracao, Usuario
+                  FROM LOG_PRECO_PRODUTO ORDER BY ID_Log""");
     }
 
     /** Visões da Etapa 04 (sql/11_visoes.sql), com a justificativa mostrada na tela. */
